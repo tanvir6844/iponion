@@ -1,243 +1,287 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import IponionLogo from '@/components/Logo';
-import { Mail, MessageCircle, RefreshCw, LogOut, CheckCircle2 } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import IponionLogo from "@/components/Logo";
+import Link from "next/link";
+import { Phone, MessageCircle, MapPin, Search, RefreshCw, LogOut, CheckCircle, Clock, Star, Send } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
 
-export default function AdminPage() {
-  const [authed, setAuthed] = useState(false);
-  const [pass, setPass] = useState('');
-  const [bookings, setBookings] = useState([]);
-  const [engineers, setEngineers] = useState([]);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+const ENGINEERS = [
+  { name: "Tanvir Ahmed", phone: "01991477412" },
+  { name: "Rahim Islam", phone: "01711000001" },
+  { name: "Kamal Hossain", phone: "01811000002" },
+  { name: "Sabbir Hossain", phone: "01911000003" }
+];
+
+export default function AdminDashboard() {
+  const [auth, setAuth] = useState(false);
+  const [pin, setPin] = useState("");
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // ব্রাউজার রিফ্রেশ দিলেও লগইন সেশন মনে রাখবে
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedAuth = localStorage.getItem('iponion_admin_auth');
-      if (savedAuth === 'true') {
-        setAuthed(true);
+    if (typeof window !== "undefined") {
+      const savedAuth = localStorage.getItem("iponion_admin_auth");
+      if (savedAuth === "true") {
+        setAuth(true);
+        fetchBookings();
       }
     }
   }, []);
 
-  useEffect(() => {
-    if (authed) {
-      loadData();
-      const interval = setInterval(loadData, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [authed, statusFilter]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const bRes = await fetch('/api/bookings?status=' + statusFilter + '&search=' + encodeURIComponent(search));
-      const eRes = await fetch('/api/engineers');
-      const bData = await bRes.json();
-      const eData = await eRes.json();
-      setBookings(Array.isArray(bData) ? bData : []);
-      setEngineers(Array.isArray(eData) ? eData : []);
-    } catch (err) {}
-    setLoading(false);
-  };
-
-  const handleLogin = (e) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pass === 'admin123') {
-      setAuthed(true);
-      localStorage.setItem('iponion_admin_auth', 'true');
+    if (pin === "1991" || pin === "1122" || pin === "admin") {
+      setAuth(true);
+      localStorage.setItem("iponion_admin_auth", "true");
+      fetchBookings();
     } else {
-      alert('ভুল পাসওয়ার্ড! ডিফল্ট পাসওয়ার্ড: admin123');
+      alert("ভুল পিন কোড! দয়া করে সঠিক পিন দিন।");
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('iponion_admin_auth');
-    setAuthed(false);
+    localStorage.removeItem("iponion_admin_auth");
+    setAuth(false);
   };
 
-  const handleAssign = async (bookingId, engineerId) => {
-    await fetch('/api/bookings/' + bookingId, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assigned_engineer_id: engineerId })
-    });
-    loadData();
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (data && data.length > 0) {
+        setBookings(data);
+      } else {
+        const local = localStorage.getItem("iponion_bookings");
+        if (local) setBookings(JSON.parse(local));
+      }
+    } catch (err) {
+      console.error(err);
+      const local = localStorage.getItem("iponion_bookings");
+      if (local) setBookings(JSON.parse(local));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleStatus = async (bookingId, status) => {
-    await fetch('/api/bookings/' + bookingId, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    loadData();
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await supabase.from("bookings").update({ status: newStatus }).eq("id", id);
+      const updated = bookings.map(b => b.id === id ? { ...b, status: newStatus } : b);
+      setBookings(updated);
+      localStorage.setItem("iponion_bookings", JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  if (!authed) {
+  const assignEngineer = async (booking: any, eng: any) => {
+    try {
+      await supabase.from("bookings").update({
+        engineer_name: eng.name,
+        engineer_phone: eng.phone,
+        status: "In Progress"
+      }).eq("id", booking.id);
+
+      const updated = bookings.map(b => b.id === booking.id ? {
+        ...b,
+        engineer_name: eng.name,
+        engineer_phone: eng.phone,
+        status: "In Progress"
+      } : b);
+      setBookings(updated);
+      localStorage.setItem("iponion_bookings", JSON.stringify(updated));
+
+      // WhatsApp Task Dispatch Link to Engineer
+      const msg = encodeURIComponent(
+        `🚨 IPonion নতুন সার্ভিস টাস্ক:\nকাস্টমার: ${booking.customer_name}\nফোন: ${booking.customer_phone}\nসার্ভিস: ${booking.service_title}\nঠিকানা: ${booking.customer_address || booking.area}\nবিস্তারিত: ${booking.problem_desc || "N/A"}`
+      );
+      window.open(`https://wa.me/880${eng.phone.replace(/^0/, "")}?text=${msg}`, "_blank");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (!auth) {
     return (
-      <div className="min-h-screen bg-[#1C0D36] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
-          <div className="flex justify-center mb-4"><IponionLogo size={42} /></div>
-          <h2 className="text-xl font-black text-[#2D1457] mb-1">Super Admin Panel</h2>
-          <p className="text-xs text-slate-500 mb-6">Default password: admin123</p>
-          <form onSubmit={handleLogin}>
-            <input
-              type="password"
-              placeholder="Admin Password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm mb-4 outline-none focus:border-[#2D1457]"
-              autoFocus
-            />
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-[#2D1457] text-white font-bold text-sm hover:bg-[#3D1A75]"
-            >
-              লগইন করুন
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="bg-slate-800 p-8 rounded-2xl max-w-sm w-full border border-slate-700 shadow-2xl text-center">
+          <IponionLogo size="lg" className="justify-center mb-6" />
+          <h2 className="text-xl font-bold text-white mb-2">অ্যাডমিন কন্ট্রোল প্যানেল</h2>
+          <p className="text-xs text-slate-400 mb-6">সুরক্ষিত অ্যাক্সেসের জন্য ৪ ডিজিটের পিন কোড দিন</p>
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="পিন কোড লিখুন"
+            className="w-full py-3 px-4 bg-slate-900 border border-slate-700 rounded-xl text-white text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
+          />
+          <button type="submit" className="w-full py-3 bg-[#2D1457] hover:bg-[#3d1c75] text-white font-bold rounded-xl shadow-lg transition-all">
+            প্রবেশ করুন
+          </button>
+        </form>
       </div>
     );
   }
 
+  const filtered = bookings.filter(b => {
+    const matchesSearch = (b.customer_name || "").toLowerCase().includes(search.toLowerCase()) ||
+                          (b.customer_phone || "").includes(search) ||
+                          (b.service_title || "").toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || b.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-5 rounded-2xl border border-slate-200">
-          <div className="flex items-center gap-4">
-            <IponionLogo size={36} />
-            <span className="text-sm font-bold text-slate-400">| Control Center (Session Saved)</span>
+    <div className="min-h-screen bg-slate-100 pb-16">
+      {/* Top Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <IponionLogo size="sm" />
+            <span className="text-xs font-bold bg-violet-100 text-violet-800 px-2 py-0.5 rounded">অ্যাডমিন প্যানেল</span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={loadData} className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100" title="Refresh Feed">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <Link href="/engineer" target="_blank" className="text-xs font-semibold text-violet-700 hover:underline">
+              ইঞ্জিনিয়ার পোর্টাল ↗
+            </Link>
+            <button onClick={fetchBookings} className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             </button>
-            <Link href="/" className="text-xs font-bold text-[#2D1457] hover:underline">Website ↗</Link>
-            <button onClick={handleLogout} className="px-3.5 py-1.5 bg-rose-50 text-rose-700 rounded-lg text-xs font-bold hover:bg-rose-100 transition inline-flex items-center gap-1">
-              <LogOut size={13} /> Logout
+            <button onClick={handleLogout} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg">
+              <LogOut size={16} />
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 mb-6 flex flex-wrap justify-between items-center gap-4">
-          <div className="flex gap-2 w-full sm:w-auto">
+      <main className="max-w-7xl mx-auto px-4 mt-6">
+        {/* Controls */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search size={16} className="absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="🔍 Search name, phone, area, service..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && loadData()}
-              className="px-4 py-2 rounded-xl border border-slate-300 text-sm w-full sm:w-80 outline-none"
+              placeholder="কাস্টমার নাম, ফোন বা সার্ভিস দিয়ে খুঁজুন..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-600"
             />
-            <button onClick={loadData} className="px-4 py-2 bg-[#2D1457] text-white text-xs font-bold rounded-xl">Search</button>
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 font-semibold">Total: {bookings.length} Bookings</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="Pending">⏳ Pending</option>
-              <option value="In Progress">⚙️ In Progress</option>
-              <option value="Completed">✅ Completed</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="p-4">Customer</th>
-                  <th className="p-4">Service & Area</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Assign Engineer</th>
-                  <th className="p-4">Dispatch Task</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bookings.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center p-8 text-slate-400">কোনো বুকিং রেকর্ড পাওয়া যায়নি।</td></tr>
-                ) : (
-                  bookings.map((b) => {
-                    const dispatchMsg = encodeURIComponent(
-                      '[IPonion Task]\nService: ' + b.service_title + '\nCustomer: ' + b.customer_name + '\nPhone: ' + b.phone + '\nLocation: ' + b.area
-                    );
-                    return (
-                      <tr key={b.id} className="hover:bg-slate-50/50">
-                        <td className="p-4 font-bold">
-                          {b.customer_name}<br />
-                          <a href={'tel:' + b.phone} className="text-[#2D1457] text-xs font-bold">📞 {b.phone}</a>
-                        </td>
-                        <td className="p-4">
-                          <span className="font-bold text-slate-800">{b.service_title}</span><br />
-                          <span className="text-xs text-slate-500">📍 {b.area}</span>
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={b.status}
-                            onChange={(e) => handleStatus(b.id, e.target.value)}
-                            className="px-2 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white"
-                          >
-                            <option value="Pending">⏳ Pending</option>
-                            <option value="In Progress">⚙️ In Progress</option>
-                            <option value="Completed">✅ Completed</option>
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={b.assigned_engineer_id || ''}
-                            onChange={(e) => handleAssign(b.id, Number(e.target.value))}
-                            className="px-2 py-1.5 rounded-lg text-xs border border-violet-200 bg-violet-50 font-semibold"
-                          >
-                            <option value="">-- Select Engineer --</option>
-                            {engineers.map((eng) => (
-                              <option key={eng.id} value={eng.id}>👨‍🔧 {eng.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          {b.engineers ? (
-                            <div className="flex gap-2">
-                              <a
-                                href={'mailto:' + b.engineers.email + '?subject=Task Assigned&body=' + dispatchMsg}
-                                className="p-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100"
-                                title="Email Engineer"
-                              >
-                                <Mail size={15} />
-                              </a>
-                              <a
-                                href={'https://wa.me/88' + b.engineers.phone + '?text=' + dispatchMsg}
-                                target="_blank"
-                                className="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                title="WhatsApp Task"
-                              >
-                                <MessageCircle size={15} />
-                              </a>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">Unassigned</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+          <div className="flex gap-2 w-full md:w-auto">
+            {["all", "Pending", "In Progress", "Completed"].map(status => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  statusFilter === status
+                    ? "bg-[#2D1457] text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {status === "all" ? "সকল বুকিং" : status}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+
+        {/* Bookings Table / Grid */}
+        <div className="space-y-4">
+          {filtered.length === 0 ? (
+            <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-slate-200">
+              কোনো বুকিং পাওয়া যায়নি।
+            </div>
+          ) : (
+            filtered.map((b) => (
+              <div key={b.id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Left Column: Customer & Service info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2.5 py-0.5 rounded">
+                        {b.service_title}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        b.status === "Completed" ? "bg-emerald-100 text-emerald-800" :
+                        b.status === "In Progress" ? "bg-amber-100 text-amber-800" :
+                        "bg-sky-100 text-sky-800"
+                      }`}>
+                        {b.status || "Pending"}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-black text-slate-900 mt-1">{b.customer_name}</h3>
+                    <p className="text-xs text-slate-500 font-mono">{b.customer_phone} • {b.customer_email || "N/A"}</p>
+                    <p className="text-xs text-slate-600 mt-1 flex items-center gap-1">
+                      <MapPin size={12} className="text-rose-500" /> {b.customer_address || b.area}
+                    </p>
+
+                    {b.problem_desc && (
+                      <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100 mt-2 italic">
+                        &quot;{b.problem_desc}&quot;
+                      </p>
+                    )}
+
+                    {/* Customer Review display if exists */}
+                    {(b.customer_rating || b.customer_review) && (
+                      <div className="mt-3 bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs">
+                        <div className="flex items-center gap-1 font-bold text-amber-800 mb-0.5">
+                          <Star size={13} className="fill-amber-500 text-amber-500" />
+                          কাস্টমার রেটিং: {b.customer_rating}/5
+                        </div>
+                        {b.customer_review && (
+                          <p className="text-slate-700 italic">&quot;{b.customer_review}&quot;</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Actions & Engineer assignment */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[260px]">
+                    {/* Status Changer */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">স্ট্যাটাস পরিবর্তন</label>
+                      <select
+                        value={b.status || "Pending"}
+                        onChange={(e) => updateStatus(b.id, e.target.value)}
+                        className="w-full text-xs font-semibold p-2 border border-slate-300 rounded-lg bg-white focus:outline-none"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </div>
+
+                    {/* Engineer Assignment */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">ইঞ্জিনিয়ার নিয়োগ করুন</label>
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          const eng = ENGINEERS.find(en => en.name === e.target.value);
+                          if (eng) assignEngineer(b, eng);
+                        }}
+                        className="w-full text-xs font-semibold p-2 border border-slate-300 rounded-lg bg-white focus:outline-none"
+                      >
+                        <option value="" disabled>{b.engineer_name ? `বর্তমান: ${b.engineer_name}` : "ইঞ্জিনিয়ার নির্বাচন করুন"}</option>
+                        {ENGINEERS.map(eng => (
+                          <option key={eng.name} value={eng.name}>{eng.name} ({eng.phone})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </main>
     </div>
   );
 }
