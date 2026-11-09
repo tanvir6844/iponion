@@ -189,7 +189,7 @@ export default function HomePage() {
 
       {/* 2. MAIN NAVBAR */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
           <Link href="/"><IponionLogo size="md" /></Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-700">
@@ -218,14 +218,14 @@ export default function HomePage() {
       </header>
 
       {/* 3. HERO SECTION */}
-      <section className="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-violet-50/60 via-white to-white">
+      <section className="relative overflow-hidden pt-7 pb-10 sm:pt-9 sm:pb-12 bg-gradient-to-b from-violet-50/60 via-white to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="max-w-3xl mx-auto text-center">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF6B57]/10 text-[#FF6B57] border border-[#FF6B57]/20 mb-4 animate-bounce">
               <Zap size={14} /> {lang === "bn" ? "ঢাকায় ৬০ মিনিটে আপনার ঠিকানায় আইটি এক্সপার্ট" : "IT Expert at your doorstep in 60 mins in Dhaka"}
             </span>
 
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.2] mb-5">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-snug mb-3.5">
               {lang === "bn" ? (
                 <>বাসা ও অফিসের আইটি সমস্যা? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-violet-800">আইপিওনিয়ন</span> দিচ্ছে তাৎক্ষণিক সমাধান</>
               ) : (
@@ -233,7 +233,7 @@ export default function HomePage() {
               )}
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 mb-8 leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-600 mb-6 max-w-2xl mx-auto leading-relaxed">
               {lang === "bn"
                 ? "রাউটার, ওয়াই-ফাই ডেড-জোন, ল্যান ক্যাবলিং, পিসি/ল্যাপটপ মেরামত, সিসিটিভি এবং মাইক্রোটিক নেটওয়ার্কিং—অভিজ্ঞ ইঞ্জিনিয়ার দিয়ে দ্রুত ও বিশ্বস্ত সার্ভিস।"
                 : "Fast, reliable on-demand IT support across Dhaka for Wi-Fi routers, structured LAN, CCTV cameras, PC repair, and MikroTik firewalls."}
