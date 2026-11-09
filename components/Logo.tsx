@@ -3,30 +3,20 @@
 import React from "react";
 
 export default function IponionLogo({ size = "md", className = "" }: { size?: "sm" | "md" | "lg", className?: string }) {
+  // Enhanced, bigger sizes so the logo stands out prominently
   const heights = {
-    sm: "h-7 sm:h-8",
-    md: "h-9 sm:h-10",
-    lg: "h-11 sm:h-12"
+    sm: "h-9 sm:h-11",
+    md: "h-12 sm:h-14 md:h-16",
+    lg: "h-16 sm:h-20"
   };
 
   return (
     <div className={`flex items-center gap-2 select-none ${className}`}>
       <img
         src="/logo.svg"
-        alt="IPONION"
-        className={`${heights[size] || "h-9"} w-auto object-contain max-w-[200px]`}
-        onError={(e: any) => {
-          // Fallback if image path is resolving
-          e.target.style.display = 'none';
-          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-        }}
+        alt="IPONION - IT & Network Support"
+        className={`${heights[size] || "h-14"} w-auto object-contain transition-all drop-shadow-sm`}
       />
-      <div className="hidden items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-[#2D1457] flex items-center justify-center text-white font-black text-sm">
-          IP
-        </div>
-        <span className="font-black text-base tracking-tight text-[#2D1457]">IPONION</span>
-      </div>
     </div>
   );
 }

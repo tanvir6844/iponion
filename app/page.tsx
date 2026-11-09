@@ -202,14 +202,14 @@ export default function HomePage() {
           <div className="flex items-center gap-2.5">
             <Link
               href="/auth"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-violet-900 bg-violet-100 hover:bg-violet-200 rounded-xl transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-violet-900 bg-[#5894FF]/10 text-[#2563eb] hover:bg-[#5894FF]/20 border border-[#5894FF]/30 rounded-xl transition-all"
             >
               <User size={14} /> {lang === "bn" ? "কাস্টমার পোর্টাল" : "Customer Portal"}
             </Link>
 
             <a
               href="#booking"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#2D1457] hover:bg-[#3d1c75] rounded-xl shadow-md transition-all"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#F53E00] hover:bg-[#e03800] rounded-xl shadow-md transition-all"
             >
               {lang === "bn" ? "জরুরি সার্ভিস নিন" : "Get Support Now"}
             </a>
@@ -227,9 +227,9 @@ export default function HomePage() {
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-snug mb-3.5">
               {lang === "bn" ? (
-                <>বাসা ও অফিসের আইটি সমস্যা? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-violet-800">আইপিওনিয়ন</span> দিচ্ছে তাৎক্ষণিক সমাধান</>
+                <>বাসা ও অফিসের আইটি সমস্যা? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F53E00] via-[#5894FF] to-[#2D1457]">আইপিওনিয়ন</span> দিচ্ছে তাৎক্ষণিক সমাধান</>
               ) : (
-                <>Home & Office IT Headaches? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-violet-800">IPonion</span> Provides Instant Solutions</>
+                <>Home & Office IT Headaches? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F53E00] via-[#5894FF] to-[#2D1457]">IPonion</span> Provides Instant Solutions</>
               )}
             </h1>
 
@@ -240,10 +240,10 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <a href="#booking" className="px-6 py-3.5 bg-[#2D1457] hover:bg-[#3d1c75] text-white rounded-xl font-bold text-sm shadow-xl flex items-center gap-2 transition-all">
+              <a href="#booking" className="px-6 py-3.5 bg-[#F53E00] hover:bg-[#e03800] text-white rounded-xl font-black text-sm shadow-xl flex items-center gap-2 transition-all">
                 {lang === "bn" ? "অনলাইনে সার্ভিস বুক করুন" : "Book Service Online"} <ArrowRight size={16} />
               </a>
-              <a href="tel:01991477412" className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
+              <a href="tel:01991477412" className="px-6 py-3.5 bg-[#81B472] hover:bg-[#72a363] text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
                 <Phone size={16} /> 01991477412
               </a>
               <a href="https://wa.me/8801991477412" target="_blank" rel="noopener noreferrer" className="px-5 py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition-all">

@@ -1,0 +1,115 @@
+﻿const fs = require('fs');
+const path = require('path');
+
+// 1. Write the exact user SVG with optimized tight viewBox for maximum size & visibility
+const rawSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="240 140 1440 800">
+  <defs>
+    <style>
+      .st0 { fill: #2d1457; }
+      .st1 { fill: #c6dd7f; }
+      .st2 { fill: #81b472; }
+      .st10 { fill: #5894ff; }
+      .st11 { fill: #fdca0c; }
+      .st12 { fill: #f53e00; }
+      .st13 { fill: #f50000; }
+    </style>
+  </defs>
+  <!-- Arcs -->
+  <g>
+    <path class="st2" d="M1345.71,391.69c-11.69-27.16-51.37-109.76-146.28-163.22-97.65-55-190.94-43.78-218.65-40.03-63.43,8.57-107.31,32.32-117.02,37.72-81.65,45.44-120.36,115.01-134.73,144.74,22.17-32.5,69.78-91.45,146.28-117.02,27.26-9.11,52.61-12.12,61.59-13.15,12.42-1.41,70.53-7.31,129.34,10.84,100.85,31.11,154.77,117.79,167.84,140.12h111.63Z"/>
+    <path class="st2" d="M1240.37,676.68c-15.13,30.17-60.03,109.18-151.41,146.28-40.92,16.61-76.86,19.01-93.93,20.02-26.67,1.57-95.84,4.71-167.84-36.44-52.63-30.08-83.43-70.49-99.06-94.95,14.6,27.43,41.72,70.03,88.79,108.3,27.3,22.2,51.69,35.11,62.62,40.55,92.08,45.77,182.56,34.27,205.3,30.8,28-4.27,117.86-19.31,192.47-95.98,42.68-43.86,63.4-90.44,73.4-118.56h-110.35Z"/>
+  </g>
+  <g>
+    <path class="st2" d="M547.34,388.3c43.39-112.06,97.81-165.92,124.72-188.62,12.25-10.33,26.26-20.5,27.72-21.56,24.82-17.94,74-52.92,144.74-73.14,21.14-6.04,84.82-22.37,167.07-12.32,29.33,3.59,111.35,16.68,195.55,74.68,105.23,72.49,151.9,175.81,167.39,216.15-17.4-37.92-68.55-134.51-172.78-188.43-15.82-8.19-58.46-28.72-117.79-36.95-28.14-3.91-129.73-15.27-230.97,40.8-112.62,62.38-155.53,164.11-166.3,192.47-46.45-1.03-92.9-2.05-139.35-3.08Z"/>
+    <path class="st2" d="M543.11,676.37h137.04c13.96,37.73,50.71,120.24,137.04,180.67,14.78,10.34,55.07,36.88,113.94,53.12,109.93,30.33,200.15,1.46,220.19-5.39,20.6-7.04,75.56-27.9,130.11-77.76,55.39-50.61,82.73-105.86,95.47-137.04-11.52,36.35-35.94,97.22-88.54,156.29-87.78,98.56-196.04,126.98-237.9,135.5-39.35,8.01-135.13,21.86-244.05-20.02-29.26-11.25-104.05-43.66-170.91-119.33-56.24-63.65-81.17-128.83-92.39-166.04Z"/>
+  </g>
+  <!-- Letters IP in Coral Red #F53E00 -->
+  <g>
+    <path class="st12" d="M307.43,662.57h-44.12v-258.19h44.12v258.19Z"/>
+    <path class="st12" d="M360.63,404.37h91.07c8.14,0,16.09.49,23.86,1.45,7.77.97,15.12,2.64,22.06,5.02,6.93,2.38,13.3,5.5,19.09,9.36,5.79,3.86,10.77,8.7,14.94,14.54,4.17,5.84,7.43,12.73,9.78,20.66,2.35,7.94,3.52,17.12,3.52,27.55,0,27.44-7.64,48.05-22.92,61.83-15.28,13.78-38.05,20.66-68.3,20.66h-48.82v97.12h-44.28v-258.19ZM404.91,521.22h49.6c8.14,0,15.07-.82,20.81-2.46,5.73-1.64,10.4-4.05,14-7.23,3.6-3.17,6.23-7.09,7.9-11.74,1.67-4.65,2.5-10.04,2.5-16.16,0-7.37-1.25-13.32-3.76-17.86-2.5-4.53-5.87-8.08-10.09-10.63-4.23-2.55-9.13-4.25-14.71-5.1-5.58-.85-11.45-1.28-17.6-1.28h-48.66v72.46Z"/>
+  </g>
+  <!-- Letters ONION in Electric Blue #5894FF -->
+  <g>
+    <path class="st10" d="M693.76,400.29c16.58,0,31.86,3.18,45.84,9.52,13.98,6.35,26.03,15.34,36.14,26.96,10.12,11.62,18.02,25.63,23.71,42.01,5.68,16.39,8.53,34.56,8.53,54.51s-2.79,37.76-8.37,54.09c-5.58,16.33-13.43,30.36-23.55,42.1-10.12,11.74-22.17,20.86-36.14,27.38-13.98,6.52-29.37,9.78-46.16,9.78s-32.18-3.23-46.16-9.69c-13.98-6.46-26.03-15.53-36.14-27.21-10.12-11.68-17.97-25.71-23.55-42.1-5.58-16.38-8.37-34.5-8.37-54.34s2.84-38.29,8.53-54.68c5.68-16.38,13.62-30.39,23.79-42.01,10.17-11.62,22.24-20.58,36.22-26.87,13.98-6.29,29.21-9.44,45.69-9.44ZM693.61,623.79c10.11,0,19.43-2.07,27.93-6.21,8.5-4.14,15.81-10.09,21.91-17.86,6.1-7.77,10.85-17.23,14.24-28.4,3.39-11.17,5.09-23.84,5.09-38.02s-1.72-27.01-5.17-38.18c-3.44-11.17-8.21-20.58-14.32-28.23-6.1-7.65-13.35-13.49-21.75-17.52s-17.5-6.04-27.3-6.04-19.27,2.04-27.77,6.12c-8.51,4.08-15.86,9.98-22.07,17.69-6.21,7.71-11.03,17.15-14.47,28.32-3.44,11.17-5.16,23.78-5.16,37.84s1.72,26.85,5.16,38.02c3.44,11.17,8.22,20.64,14.32,28.4,6.1,7.77,13.35,13.72,21.75,17.86,8.39,4.14,17.6,6.21,27.62,6.21Z"/>
+    <path class="st10" d="M1045.2,662.57h-41.78l-105.93-172.64v172.64h-42.72v-258.19h41.93l105.46,172.98v-172.98h43.03v258.19Z"/>
+    <path class="st10" d="M1147.53,662.57h-44.12v-258.19h44.12v258.19Z"/>
+    <path class="st10" d="M1305.26,400.29c16.58,0,31.86,3.18,45.84,9.52,13.98,6.35,26.03,15.34,36.14,26.96,10.12,11.62,18.02,25.63,23.71,42.01,5.68,16.39,8.53,34.56,8.53,54.51s-2.79,37.76-8.37,54.09c-5.58,16.33-13.43,30.36-23.55,42.1-10.12,11.74-22.17,20.86-36.14,27.38-13.98,6.52-29.37,9.78-46.16,9.78s-32.18-3.23-46.16-9.69c-13.98-6.46-26.03-15.53-36.14-27.21-10.12-11.68-17.97-25.71-23.55-42.1-5.58-16.38-8.37-34.5-8.37-54.34s2.84-38.29,8.53-54.68c5.68-16.38,13.62-30.39,23.79-42.01,10.17-11.62,22.24-20.58,36.22-26.87,13.98-6.29,29.21-9.44,45.69-9.44ZM1305.1,623.79c10.11,0,19.43-2.07,27.93-6.21,8.5-4.14,15.81-10.09,21.91-17.86,6.1-7.77,10.85-17.23,14.24-28.4,3.39-11.17,5.09-23.84,5.09-38.02s-1.72-27.01-5.17-38.18c-3.44-11.17-8.21-20.58-14.32-28.23-6.1-7.65-13.35-13.49-21.75-17.52s-17.5-6.04-27.3-6.04-19.27,2.04-27.77,6.12c-8.51,4.08-15.86,9.98-22.07,17.69-6.21,7.71-11.03,17.15-14.47,28.32-3.44,11.17-5.16,23.78-5.16,37.84s1.72,26.85,5.16,38.02c3.44,11.17,8.22,20.64,14.32,28.4,6.1,7.77,13.35,13.72,21.75,17.86,8.39,4.14,17.6,6.21,27.62,6.21Z"/>
+    <path class="st10" d="M1656.7,662.57h-41.78l-105.93-172.64v172.64h-42.72v-258.19h41.93l105.46,172.98v-172.98h43.03v258.19Z"/>
+  </g>
+</svg>
+`;
+
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+fs.writeFileSync(path.join(publicDir, 'logo.svg'), rawSvg, 'utf8');
+console.log('✓ Saved high-definition cropped SVG logo to public/logo.svg');
+
+// 2. Update components/Logo.tsx with LARGER, prominent dimensions
+const logoComponent = `"use client";
+
+import React from "react";
+
+export default function IponionLogo({ size = "md", className = "" }: { size?: "sm" | "md" | "lg", className?: string }) {
+  // Enhanced, bigger sizes so the logo stands out prominently
+  const heights = {
+    sm: "h-9 sm:h-11",
+    md: "h-12 sm:h-14 md:h-16",
+    lg: "h-16 sm:h-20"
+  };
+
+  return (
+    <div className={\`flex items-center gap-2 select-none \${className}\`}>
+      <img
+        src="/logo.svg"
+        alt="IPONION - IT & Network Support"
+        className={\`\${heights[size] || "h-14"} w-auto object-contain transition-all drop-shadow-sm\`}
+      />
+    </div>
+  );
+}
+`;
+
+fs.writeFileSync(path.join(__dirname, 'components/Logo.tsx'), logoComponent, 'utf8');
+console.log('✓ components/Logo.tsx updated with large, prominent display sizing');
+
+// 3. Update app/page.tsx with the cohesive logo color theme:
+// Coral Red (#F53E00), Electric Blue (#5894FF), Lime Green (#81B472), Deep Violet (#2D1457)
+let homePagePath = path.join(__dirname, 'app/page.tsx');
+if (fs.existsSync(homePagePath)) {
+  let content = fs.readFileSync(homePagePath, 'utf8');
+
+  // Align brand gradient in hero title to match Logo colors: Coral #F53E00 -> Blue #5894FF -> Violet #2D1457
+  content = content.replace(
+    /from-\[#2D1457\] via-\[#FF6B57\] to-violet-800/g,
+    'from-[#F53E00] via-[#5894FF] to-[#2D1457]'
+  );
+
+  // Align Primary Booking CTA buttons to vibrant Coral #F53E00
+  content = content.replace(/bg-\[#2D1457\] hover:bg-\[#3d1c75\] text-white rounded-xl font-bold text-sm shadow-xl/g,
+    'bg-[#F53E00] hover:bg-[#e03800] text-white rounded-xl font-black text-sm shadow-xl'
+  );
+
+  // Align hotline phone button to Fresh Green #81B472
+  content = content.replace(/bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold/g,
+    'bg-[#81B472] hover:bg-[#72a363] text-white rounded-xl font-bold'
+  );
+
+  // Align customer portal pill in navbar
+  content = content.replace(/bg-violet-100 hover:bg-violet-200/g,
+    'bg-[#5894FF]/10 text-[#2563eb] hover:bg-[#5894FF]/20 border border-[#5894FF]/30'
+  );
+
+  // Align navbar booking button
+  content = content.replace(/bg-\[#2D1457\] hover:bg-\[#3d1c75\] rounded-xl shadow-md transition-all/g,
+    'bg-[#F53E00] hover:bg-[#e03800] rounded-xl shadow-md transition-all'
+  );
+
+  fs.writeFileSync(homePagePath, content, 'utf8');
+  console.log('✓ app/page.tsx updated with cohesive color palette matching the logo');
+}
+
+console.log('\\nAll logo resizing and brand theme integration completed cleanly!');
