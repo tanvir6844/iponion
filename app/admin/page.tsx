@@ -1,473 +1,363 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import IponionLogo from "@/components/Logo";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Phone, MessageCircle, MapPin, Search, RefreshCw, LogOut, CheckCircle, 
-  Clock, Star, Send, Trash2, Edit3, Users, Shield, Plus, X, Wrench, Mail
+  Shield, Phone, Clock, Calendar, CheckCircle2, AlertCircle, 
+  Trash2, Edit, RefreshCw, UserCheck, Wrench, Search, MapPin, Mail, LogOut
 } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import IponionLogo from "@/components/Logo";
+import { supabase } from "@/lib/supabase";
 
-const ENGINEERS = [
-  { name: "Tanvir Ahmed", phone: "01991477412" },
-  { name: "Rahim Islam", phone: "01711000001" },
-  { name: "Kamal Hossain", phone: "01811000002" },
-  { name: "Sabbir Hossain", phone: "01911000003" }
-];
-
-export default function AdminDashboard() {
-  const [auth, setAuth] = useState(false);
+export default function AdminPage() {
   const [pin, setPin] = useState("");
-  const [activeTab, setActiveTab] = useState<"bookings" | "users">("bookings");
-
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string>("এইমাত্র");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedAuth = localStorage.getItem("iponion_admin_auth");
-      if (savedAuth === "true") {
-        setAuth(true);
-      }
-    }
-  }, []);
-
-  // Real-time Background Polling Every 3 Seconds
-  useEffect(() => {
-    if (!auth) return;
-    loadAllData(true);
-    const interval = setInterval(() => {
-      loadAllData(false);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [auth]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pin === "1991" || pin === "1122" || pin === "admin") {
-      setAuth(true);
-      localStorage.setItem("iponion_admin_auth", "true");
-    } else {
-      alert("ভুল পিন কোড! সঠিক পিন: 1991");
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("iponion_admin_auth");
-    setAuth(false);
-  };
-
-  const loadAllData = async (showSpinner = false) => {
-    if (showSpinner) setLoading(true);
-
+  // Load Bookings
+  const loadBookings = async () => {
+    let supaList: any[] = [];
     try {
-      // 1. Fetch all bookings from Supabase
-      const { data: dbBookings } = await supabase
+      const { data, error } = await supabase
         .from("bookings")
         .select("*")
         .order("created_at", { ascending: false });
 
-      let currentBookings = dbBookings || [];
-      if (currentBookings.length === 0) {
-        const local = localStorage.getItem("iponion_bookings");
-        if (local) currentBookings = JSON.parse(local);
+      if (!error && data) {
+        supaList = data;
       }
-      setBookings(currentBookings);
+    } catch (e) {
+      console.warn("Supabase load error:", e);
+    }
 
-      // 2. Build Centralized Customer Database
-      const uniqueUsersMap = new Map();
+    // Merge with localStorage
+    let localList: any[] = [];
+    try {
+      const raw = localStorage.getItem("iponion_bookings");
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
 
-      // Extract from Supabase customers table if present
-      try {
-        const { data: dbCustomers } = await supabase.from("customers").select("*");
-        if (dbCustomers) {
-          dbCustomers.forEach(c => uniqueUsersMap.set(c.phone, c));
-        }
-      } catch (e) {}
+    const merged = [...supaList];
+    const seen = new Set(supaList.map((b) => String(b.id)));
+    for (const lb of localList) {
+      if (!seen.has(String(lb.id))) {
+        merged.push(lb);
+        seen.add(String(lb.id));
+      }
+    }
 
-      // Extract from all bookings & registrations (GUARANTEED ACROSS ALL DEVICES!)
-      currentBookings.forEach((b: any) => {
-        if (b.customer_phone && !uniqueUsersMap.has(b.customer_phone)) {
-          uniqueUsersMap.set(b.customer_phone, {
-            name: b.customer_name || "সম্মানিত গ্রাহক",
-            phone: b.customer_phone,
-            email: b.customer_email || `${b.customer_phone}@customer.iponion.com`,
-            address: b.customer_address || b.area || "Dhaka",
-            registered_at: b.created_at
-          });
-        }
-      });
+    setBookings(merged);
+    setLoading(false);
+    setRefreshing(false);
+  };
 
-      // Extract from local registered list
-      try {
-        const localUsers = localStorage.getItem("iponion_registered_customers");
-        if (localUsers) {
-          const parsed = JSON.parse(localUsers);
-          parsed.forEach((u: any) => {
-            if (!uniqueUsersMap.has(u.phone)) uniqueUsersMap.set(u.phone, u);
-          });
-        }
-      } catch (e) {}
+  useEffect(() => {
+    const savedPin = localStorage.getItem("iponion_admin_pin");
+    if (savedPin === "1991" || savedPin === "1234") {
+      setIsAuthenticated(true);
+      loadBookings();
+    } else {
+      setLoading(false);
+    }
 
-      setUsers(Array.from(uniqueUsersMap.values()));
-      setLastSynced(new Date().toLocaleTimeString('bn-BD'));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (showSpinner) setLoading(false);
+    // Auto poll every 3 seconds for live dashboard updates
+    const interval = setInterval(() => {
+      if (localStorage.getItem("iponion_admin_pin") === "1991") {
+        loadBookings();
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin === "1991" || pin === "1234") {
+      localStorage.setItem("iponion_admin_pin", "1991");
+      setIsAuthenticated(true);
+      loadBookings();
+    } else {
+      alert("ভুল অ্যাডমিন পিন! অনুগ্রহ করে সঠিক পিন দিন।");
     }
   };
 
-  const updateStatus = async (id: string, newStatus: string) => {
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+  const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await supabase.from("bookings").update({ status: newStatus }).eq("id", id);
-    } catch (e) {}
-  };
-
-  const assignEngineer = async (booking: any, eng: any) => {
-    setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, engineer_name: eng.name, engineer_phone: eng.phone, status: "In Progress" } : b));
-    try {
-      await supabase.from("bookings").update({
-        engineer_name: eng.name,
-        engineer_phone: eng.phone,
-        status: "In Progress"
-      }).eq("id", booking.id);
+      await supabase
+        .from("bookings")
+        .update({ status: newStatus })
+        .eq("id", id);
     } catch (e) {}
 
-    const msg = encodeURIComponent(`🚨 IPonion নতুন টাস্ক:\nকাস্টমার: ${booking.customer_name}\nফোন: ${booking.customer_phone}\nসার্ভিস: ${booking.service_title}\nঠিকানা: ${booking.customer_address || booking.area}`);
-    window.open(`https://wa.me/880${eng.phone.replace(/^0/, "")}?text=${msg}`, "_blank");
+    // Update local state
+    setBookings((prev) =>
+      prev.map((b) => (String(b.id) === String(id) ? { ...b, status: newStatus } : b))
+    );
   };
 
-  const handleDeleteBooking = async (id: string) => {
-    if (!confirm("⚠️ আপনি কি নিশ্চিতভাবে এই বুকিংটি মুছে ফেলতে চান?")) return;
-    setBookings(prev => prev.filter(b => b.id !== id));
+  const handleAssignEngineer = async (id: string) => {
+    const name = prompt("ইঞ্জিনিয়ারের নাম লিখুন:");
+    if (!name) return;
+    const phone = prompt("ইঞ্জিনিয়ারের ফোন নম্বর লিখুন:");
+
+    try {
+      await supabase
+        .from("bookings")
+        .update({
+          assigned_engineer_name: name,
+          assigned_engineer_phone: phone || "",
+          status: "Assigned"
+        })
+        .eq("id", id);
+    } catch (e) {}
+
+    setBookings((prev) =>
+      prev.map((b) =>
+        String(b.id) === String(id)
+          ? { ...b, assigned_engineer_name: name, assigned_engineer_phone: phone, status: "Assigned" }
+          : b
+      )
+    );
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি ডিলিট করতে চান?")) return;
     try {
       await supabase.from("bookings").delete().eq("id", id);
-    } catch (err) {}
+    } catch (e) {}
+
+    setBookings((prev) => prev.filter((b) => String(b.id) !== String(id)));
   };
 
-  const handleDeleteUser = async (phone: string) => {
-    if (!confirm(`⚠️ আপনি কি নিশ্চিতভাবে কাস্টমার (${phone}) অ্যাকাউন্টটি পার্মানেন্টলি ডিলিট করতে চান?`)) return;
-    setUsers(prev => prev.filter(u => u.phone !== phone));
-    try {
-      await supabase.from("customers").delete().eq("phone", phone);
-      await supabase.from("bookings").delete().eq("customer_phone", phone);
-    } catch (err) {}
-  };
-
-  if (!auth) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-slate-800 p-8 rounded-3xl max-w-sm w-full border border-slate-700 shadow-2xl text-center">
-          <IponionLogo size="lg" className="justify-center mb-6" />
-          <h2 className="text-xl font-bold text-white mb-1">অ্যাডমিন সুপার কন্ট্রোল</h2>
-          <p className="text-xs text-slate-400 mb-6">ফুল অ্যাক্সেসের জন্য ৪ ডিজিটের পিন কোড দিন</p>
-          <input
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="পিন: 1991"
-            className="w-full py-3.5 px-4 bg-slate-900 border border-slate-700 rounded-xl text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4 font-mono"
-          />
-          <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl shadow-lg transition-all text-sm">
-            প্রবেশ করুন (Login)
-          </button>
-        </form>
+      <div className="min-h-screen bg-gradient-to-br from-[#1a0b33] via-[#2D1457] to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
+          <IponionLogo size="md" className="mx-auto mb-4" />
+          <h2 className="text-xl font-black text-[#2D1457]">সুপার অ্যাডমিন লগইন</h2>
+          <p className="text-xs text-slate-500 mt-1 mb-6">নিরাপদ ড্যাশবোর্ডে প্রবেশ করতে সিকিউরিটি পিন দিন</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="password"
+              required
+              autoFocus
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="পিন কোড লিখুন"
+              className="w-full py-3 px-4 border border-slate-300 rounded-xl text-center font-mono text-xl tracking-widest focus:ring-2 focus:ring-[#5894FF] focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-[#2D1457] hover:bg-[#3d1c75] text-white font-bold rounded-xl text-sm shadow-lg transition-all"
+            >
+              প্রবেশ করুন
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
-  const filteredBookings = bookings.filter(b => {
-    const isRegistrationRow = b.service_title === "Customer Registration" || b.service_title === "Customer Registration (নতুন গ্রাহক)";
-    const matchesSearch = (b.customer_name || "").toLowerCase().includes(search.toLowerCase()) ||
-                          (b.customer_phone || "").includes(search) ||
-                          (b.service_title || "").toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || b.status === statusFilter;
-    return !isRegistrationRow && matchesSearch && matchesStatus;
-  });
-
-  const filteredUsers = users.filter(u => {
-    return (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
-           (u.phone || "").includes(search) ||
-           (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
-           (u.address || "").toLowerCase().includes(search.toLowerCase());
+  const filtered = bookings.filter((b) => {
+    const matchSearch =
+      (b.customer_name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (b.customer_phone || "").includes(search) ||
+      (b.service_title || "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "All" || b.status === statusFilter;
+    return matchSearch && matchStatus;
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-20">
-      {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-16">
+      {/* HEADER */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/"><IponionLogo size="sm" /></Link>
-            <span className="text-xs font-black bg-violet-100 text-[#2D1457] px-2.5 py-1 rounded-full flex items-center gap-1 border border-violet-200">
-              <Shield size={13} /> সুপার অ্যাডমিন
-            </span>
-            <span className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              অটো-সিঙ্ক সক্রিয় ({lastSynced})
+            <span className="px-2.5 py-0.5 bg-violet-100 text-violet-900 rounded-full text-xs font-black">
+              SUPER ADMIN
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/engineer" target="_blank" className="text-xs font-bold text-lime-700 bg-lime-100 hover:bg-lime-200 px-3 py-1.5 rounded-lg flex items-center gap-1">
-              <Wrench size={13} /> ইঞ্জিনিয়ার পোর্টাল ↗
-            </Link>
-            <button onClick={() => loadAllData(true)} className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setRefreshing(true); loadBookings(); }}
+              className="p-2 text-slate-600 hover:text-[#5894FF] rounded-xl hover:bg-slate-100 transition-all"
+              title="রিফ্রেশ করুন"
+            >
+              <RefreshCw size={16} className={refreshing ? "animate-spin text-[#5894FF]" : ""} />
             </button>
-            <button onClick={handleLogout} className="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 flex items-center gap-1">
-              <LogOut size={13} /> লগআউট
+
+            <button
+              onClick={() => {
+                localStorage.removeItem("iponion_admin_pin");
+                setIsAuthenticated(false);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-bold transition-all"
+            >
+              <LogOut size={13} />
+              <span>লগআউট</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 mt-6">
-        {/* STATS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-500 font-medium">মোট সার্ভিস বুকিং</p>
-            <p className="text-2xl font-black text-slate-900 mt-1">{filteredBookings.length}</p>
-          </div>
-          <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm">
-            <p className="text-xs text-amber-800 font-medium">অপেক্ষমান / চলমান</p>
-            <p className="text-2xl font-black text-amber-700 mt-1">
-              {filteredBookings.filter(b => b.status !== "Completed" && b.status !== "সম্পন্ন").length}
+      {/* DASHBOARD BODY */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-black text-[#2D1457]">সার্ভিস বুকিং কন্ট্রোল প্যানেল</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              মোট বুকিং: <strong className="text-slate-800">{bookings.length} টি</strong> • প্রতি ৩ সেকেন্ডে অটো-সিঙ্ক হচ্ছে
             </p>
           </div>
-          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 shadow-sm">
-            <p className="text-xs text-emerald-800 font-medium">সম্পন্ন কাজ</p>
-            <p className="text-2xl font-black text-emerald-700 mt-1">
-              {filteredBookings.filter(b => b.status === "Completed" || b.status === "সম্পন্ন").length}
-            </p>
-          </div>
-          <div className="bg-violet-50 p-4 rounded-2xl border border-violet-200 shadow-sm">
-            <p className="text-xs text-violet-800 font-medium">মোট কাস্টমার ডাটাবেজ</p>
-            <p className="text-2xl font-black text-violet-700 mt-1">{users.length}</p>
-          </div>
-        </div>
 
-        {/* TABS */}
-        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200 w-fit mb-6">
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-              activeTab === "bookings" ? "bg-[#2D1457] text-white shadow" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            📋 বুকিং ও সার্ভিস ({filteredBookings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-              activeTab === "users" ? "bg-[#2D1457] text-white shadow" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Users size={15} /> 👥 কাস্টমার ডাটাবেজ ({users.length})
-          </button>
-        </div>
-
-        {/* SEARCH */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full md:w-96">
-            <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="কাস্টমার নাম, ফোন বা ঠিকানা দিয়ে খুঁজুন..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-violet-600"
-            />
-          </div>
-
-          {activeTab === "bookings" && (
-            <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
-              {["all", "Pending", "In Progress", "Completed"].map(st => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    statusFilter === st ? "bg-[#2D1457] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {st === "all" ? "সকল বুকিং" : st}
-                </button>
-              ))}
+          {/* FILTERS */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-60">
+              <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="নাম, ফোন বা সার্ভিস দিয়ে খুঁজুন..."
+                className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#5894FF]"
+              />
             </div>
-          )}
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none"
+            >
+              <option value="All">সব স্ট্যাটাস</option>
+              <option value="Pending">Pending (অপেক্ষমান)</option>
+              <option value="Confirmed">Confirmed (নিশ্চিত)</option>
+              <option value="Assigned">Assigned (ইঞ্জিনিয়ার নিযুক্ত)</option>
+              <option value="Completed">Completed (সম্পন্ন)</option>
+              <option value="Cancelled">Cancelled (বাতিল)</option>
+            </select>
+          </div>
         </div>
 
-        {/* TAB 1: BOOKINGS LIST */}
-        {activeTab === "bookings" && (
-          <div className="space-y-4">
-            {filteredBookings.length === 0 ? (
-              <div className="bg-white p-12 text-center text-slate-500 rounded-2xl border border-slate-200">
-                কোনো সার্ভিস বুকিং রেকর্ড পাওয়া যায়নি।
-              </div>
-            ) : (
-              filteredBookings.map((b) => (
-                <div key={b.id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2.5 py-0.5 rounded-md">
-                          {b.service_title}
+        {/* BOOKINGS TABLE / CARDS */}
+        <div className="space-y-4">
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
+              <p className="text-sm font-bold text-slate-600">কোনো বুকিং পাওয়া যায়নি।</p>
+            </div>
+          ) : (
+            filtered.map((b) => (
+              <div
+                key={b.id}
+                className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
+              >
+                <div className="space-y-2 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="font-mono text-xs font-bold text-slate-400">#{String(b.id).slice(0, 8)}</span>
+                    <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
+                    
+                    <select
+                      value={b.status || "Pending"}
+                      onChange={(e) => handleStatusChange(b.id, e.target.value)}
+                      className="text-xs font-bold px-2.5 py-1 rounded-full border border-slate-300 bg-slate-50 cursor-pointer focus:outline-none"
+                    >
+                      <option value="Pending">⏳ Pending</option>
+                      <option value="Confirmed">✓ Confirmed</option>
+                      <option value="Assigned">🔧 Assigned</option>
+                      <option value="Completed">✅ Completed</option>
+                      <option value="Cancelled">✕ Cancelled</option>
+                    </select>
+                  </div>
+
+                  {/* CUSTOMER & DATE/TIME DETAILS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">গ্রাহকের তথ্য</span>
+                      <strong className="text-slate-800 text-sm block">{b.customer_name}</strong>
+                      <a href={`tel:${b.customer_phone}`} className="font-mono text-[#5894FF] font-bold block">
+                        📞 {b.customer_phone}
+                      </a>
+                      {b.customer_email && (
+                        <span className="text-slate-500 font-mono text-[11px] block truncate">
+                          ✉️ {b.customer_email}
                         </span>
-                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          b.status === "Completed" ? "bg-emerald-100 text-emerald-800" :
-                          b.status === "In Progress" ? "bg-amber-100 text-amber-800" :
-                          "bg-sky-100 text-sky-800"
-                        }`}>
-                          {b.status || "Pending"}
+                      )}
+                    </div>
+
+                    <div className="p-2 bg-blue-50/60 rounded-xl border border-blue-100">
+                      <span className="text-blue-600 block text-[10px] uppercase font-black">📅 সার্ভিস নেওয়ার সময়সূচী</span>
+                      <div className="mt-0.5">
+                        <strong className="text-slate-900 block font-mono text-sm">
+                          তারিখ: {b.booking_date || "তাৎক্ষণিক"}
+                        </strong>
+                        <span className="text-slate-600 block text-[11px] font-semibold">
+                          সময়: {b.booking_time || "যেকোনো সময়"}
                         </span>
                       </div>
+                    </div>
 
-                      <h3 className="text-base font-black text-slate-900 mt-1">{b.customer_name}</h3>
-                      <p className="text-xs text-slate-500 font-mono">{b.customer_phone} • {b.customer_email || "N/A"}</p>
-                      
-                      <p className="text-xs text-slate-600 mt-1 flex items-center gap-1.5">
-                        <MapPin size={13} className="text-rose-500 flex-shrink-0" />
-                        <span>{b.customer_address || b.area}</span>
-                      </p>
-
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">📍 ঠিকানা ও সমস্যা</span>
+                      <span className="text-slate-700 block truncate">{b.customer_address || b.area || "ঠিকানা দেওয়া হয়নি"}</span>
                       {b.problem_desc && (
-                        <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-2 italic">
-                          &quot;{b.problem_desc}&quot;
+                        <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1 italic">
+                          "{b.problem_desc}"
                         </p>
                       )}
-
-                      {(b.customer_rating || b.customer_review) && (
-                        <div className="mt-3 bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs">
-                          <div className="flex items-center gap-1 font-bold text-amber-800 mb-0.5">
-                            <Star size={13} className="fill-amber-500 text-amber-500" />
-                            কাস্টমার রেটিং: {b.customer_rating}/5
-                          </div>
-                          {b.customer_review && (
-                            <p className="text-slate-700 italic">&quot;{b.customer_review}&quot;</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 min-w-[260px] pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">স্ট্যাটাস পরিবর্তন</label>
-                        <select
-                          value={b.status || "Pending"}
-                          onChange={(e) => updateStatus(b.id, e.target.value)}
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Completed">Completed</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">ইঞ্জিনিয়ার নিয়োগ</label>
-                        <select
-                          defaultValue=""
-                          onChange={(e) => {
-                            const eng = ENGINEERS.find(en => en.name === e.target.value);
-                            if (eng) assignEngineer(b, eng);
-                          }}
-                          className="w-full text-xs font-semibold p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none"
-                        >
-                          <option value="" disabled>{b.engineer_name ? `বর্তমান: ${b.engineer_name}` : "ইঞ্জিনিয়ার নির্বাচন করুন"}</option>
-                          {ENGINEERS.map(eng => (
-                            <option key={eng.name} value={eng.name}>{eng.name} ({eng.phone})</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="pt-1">
-                        <button
-                          onClick={() => handleDeleteBooking(b.id)}
-                          className="w-full py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 flex items-center justify-center gap-1"
-                        >
-                          <Trash2 size={13} /> বুকিং মুছুন
-                        </button>
-                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
 
-        {/* TAB 2: CENTRAL CUSTOMER DATABASE */}
-        {activeTab === "users" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-                    <th className="p-4">কাস্টমার নাম</th>
-                    <th className="p-4">মোবাইল নম্বর</th>
-                    <th className="p-4">ইমেইল</th>
-                    <th className="p-4">ঠিকানা</th>
-                    <th className="p-4 text-center">অ্যাকশন</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-500">কোনো কাস্টমার অ্যাকাউন্ট পাওয়া যায়নি।</td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map((u, i) => (
-                      <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-4 font-bold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-violet-100 text-[#2D1457] flex items-center justify-center font-black text-xs">
-                              {(u.name || "C")[0]}
-                            </div>
-                            <span>{u.name || "সম্মানিত গ্রাহক"}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 font-mono font-semibold text-slate-800">
-                          <div className="flex items-center gap-1.5">
-                            <Phone size={12} className="text-emerald-600" />
-                            <span>{u.phone}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <div className="flex items-center gap-1.5">
-                            <Mail size={12} className="text-slate-400" />
-                            <span>{u.email || "N/A"}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin size={12} className="text-rose-500" />
-                            <span>{u.address || "Dhaka"}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-center">
-                          <button
-                            onClick={() => handleDeleteUser(u.phone)}
-                            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition-colors"
-                            title="কাস্টমার ডিলিট করুন"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                  {/* ASSIGNED ENGINEER INFO */}
+                  {b.assigned_engineer_name && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+                      <div>
+                        <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
+                        {b.assigned_engineer_phone && <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>}
+                      </div>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+
+                  {/* CREATED TIMESTAMP */}
+                  <div className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                    <Clock size={11} />
+                    <span>বুকিং তৈরি: {b.created_at ? new Date(b.created_at).toLocaleString("bn-BD") : "N/A"}</span>
+                  </div>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    onClick={() => handleAssignEngineer(b.id)}
+                    className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1"
+                  >
+                    <Wrench size={12} />
+                    <span>ইঞ্জিনিয়ার অ্যাসাইন</span>
+                  </button>
+
+                  <a
+                    href={`tel:${b.customer_phone}`}
+                    className="p-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl text-xs font-bold"
+                    title="কল দিন"
+                  >
+                    <Phone size={15} />
+                  </a>
+
+                  <button
+                    onClick={() => handleDelete(b.id)}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
+                    title="ডিলিট করুন"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </main>
     </div>
   );
