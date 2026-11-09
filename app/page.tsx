@@ -140,111 +140,12 @@ export default function HomePage() {
       {/* 1. TOP PORTAL ACCESS STRIP (ALADA LOGIN BAR) */}
       <div className="bg-[#1a0b33] text-white text-[11px] py-1.5 px-4 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-4 text-slate-300">
-            <span className="flex items-center gap-1.5">
-              <Phone size={11} className="text-lime-400" />
-              হটলাইন: <strong className="text-white font-mono">01991477412</strong>
-            </span>
-            <span className="hidden sm:inline-flex items-center gap-1">
-              <Clock size={11} className="text-amber-400" /> ২৪/৭ অন-কল সাপোর্ট
-            </span>
-          </div>
-
-          {/* DEDICATED PORTAL BUTTONS */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/engineer"
-              className="bg-lime-400 hover:bg-lime-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all shadow-sm"
-            >
-              <Wrench size={10} /> ইঞ্জিনিয়ার লগইন
-            </Link>
-
-            <Link
-              href="/admin"
-              className="bg-white/15 hover:bg-white/25 text-white font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all"
-            >
-              <Shield size={10} /> অ্যাডমিন
-            </Link>
-
-            <span className="text-white/20">|</span>
-
-            {/* Language Switch */}
-            <div className="flex items-center bg-black/30 rounded-full p-0.5">
-              <button
-                onClick={() => toggleLang("bn")}
-                className={`px-2 py-0.5 rounded-full font-bold transition-all ${lang === "bn" ? "bg-white text-slate-900" : "text-slate-300"}`}
-              >
-                বাং
-              </button>
-              <button
-                onClick={() => toggleLang("en")}
-                className={`px-2 py-0.5 rounded-full font-bold transition-all ${lang === "en" ? "bg-white text-slate-900" : "text-slate-300"}`}
-              >
-                EN
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. MAIN NAVBAR */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
-          <Link href="/"><IponionLogo size="md" /></Link>
-
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-700">
-            <a href="#services" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "সার্ভিসসমূহ" : "Services"}</a>
-            <a href="#booking" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "বুকিং" : "Book Service"}</a>
-            <a href="#technologies" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "প্রযুক্তি পার্টনার" : "Technologies"}</a>
-            <a href="#contact" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "যোগাযোগ ও ঠিকানা" : "Contact & Map"}</a>
-          </nav>
-
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/auth"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-violet-900 bg-[#5894FF]/10 text-[#2563eb] hover:bg-[#5894FF]/20 border border-[#5894FF]/30 rounded-xl transition-all"
-            >
-              <User size={14} /> {lang === "bn" ? "কাস্টমার পোর্টাল" : "Customer Portal"}
-            </Link>
-
-            <a
-              href="#booking"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#F53E00] hover:bg-[#e03800] rounded-xl shadow-md transition-all"
-            >
-              {lang === "bn" ? "জরুরি সার্ভিস নিন" : "Get Support Now"}
-            </a>
-          </div>
-        </div>
-      </header>
-
-      {/* 3. HERO SECTION */}
-      <section className="relative overflow-hidden pt-7 pb-10 sm:pt-9 sm:pb-12 bg-gradient-to-b from-violet-50/60 via-white to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF6B57]/10 text-[#FF6B57] border border-[#FF6B57]/20 mb-4 animate-bounce">
-              <Zap size={14} /> {lang === "bn" ? "ঢাকায় ৬০ মিনিটে আপনার ঠিকানায় আইটি এক্সপার্ট" : "IT Expert at your doorstep in 60 mins in Dhaka"}
-            </span>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-snug mb-3.5">
-              {lang === "bn" ? (
-                <>বাসা ও অফিসের আইটি সমস্যা? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F53E00] via-[#5894FF] to-[#2D1457]">আইপিওনিয়ন</span> দিচ্ছে তাৎক্ষণিক সমাধান</>
-              ) : (
-                <>Home & Office IT Headaches? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F53E00] via-[#5894FF] to-[#2D1457]">IPonion</span> Provides Instant Solutions</>
-              )}
-            </h1>
-
-            <p className="text-sm sm:text-base text-slate-600 mb-6 max-w-2xl mx-auto leading-relaxed">
-              {lang === "bn"
-                ? "রাউটার, ওয়াই-ফাই ডেড-জোন, ল্যান ক্যাবলিং, পিসি/ল্যাপটপ মেরামত, সিসিটিভি এবং মাইক্রোটিক নেটওয়ার্কিং—অভিজ্ঞ ইঞ্জিনিয়ার দিয়ে দ্রুত ও বিশ্বস্ত সার্ভিস।"
-                : "Fast, reliable on-demand IT support across Dhaka for Wi-Fi routers, structured LAN, CCTV cameras, PC repair, and MikroTik firewalls."}
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a href="#booking" className="px-6 py-3.5 bg-[#F53E00] hover:bg-[#e03800] text-white rounded-xl font-black text-sm shadow-xl flex items-center gap-2 transition-all">
-                {lang === "bn" ? "অনলাইনে সার্ভিস বুক করুন" : "Book Service Online"} <ArrowRight size={16} />
-              </a>
-              <a href="tel:01991477412" className="px-6 py-3.5 bg-[#81B472] hover:bg-[#72a363] text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-slate-300">
+            <a href="tel:01991477412" className="px-5 py-3.5 bg-[#81B472] hover:bg-[#72a363] text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
                 <Phone size={16} /> 01991477412
+              </a>
+              <a href="tel:096116786" className="px-5 py-3.5 bg-[#5894FF] hover:bg-[#4382f5] text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
+                <Phone size={16} /> 096116786
               </a>
               <a href="https://wa.me/8801991477412" target="_blank" rel="noopener noreferrer" className="px-5 py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition-all">
                 <MessageCircle size={16} /> WhatsApp
@@ -449,11 +350,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Phone size={18} className="text-emerald-600 flex-shrink-0" />
+                <div className="flex items-start gap-3">
+                  <Phone size={18} className="text-[#81B472] flex-shrink-0 mt-1" />
                   <div>
-                    <strong className="text-slate-900">হটলাইন ও WhatsApp:</strong>
-                    <p className="font-mono">01991477412</p>
+                    <strong className="text-slate-900">হটলাইন ও টেলিফোন যোগাযোগ:</strong>
+                    <p className="font-mono text-slate-700 mt-1">
+                      মোবাইল ও WhatsApp: <a href="tel:01991477412" className="font-bold text-slate-900 hover:underline">01991477412</a>
+                    </p>
+                    <p className="font-mono text-slate-700 mt-0.5">
+                      টেলিফোন (IP Phone): <a href="tel:096116786" className="font-bold text-[#5894FF] hover:underline">096116786</a>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -497,7 +403,7 @@ export default function HomePage() {
           </div>
 
           <div className="pt-6 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} IPonion (আইপিওনিয়ন). All rights reserved. Mohammadpur, Dhaka.
+            হটলাইন: <a href="tel:01991477412" className="text-white hover:underline">01991477412</a> • টেলিফোন: <a href="tel:096116786" className="text-[#5894FF] hover:underline">096116786</a> • মোহাম্মদপুর, ঢাকা<br className="sm:hidden" /> | © {new Date().getFullYear()} IPonion. All rights reserved.
           </div>
         </div>
       </footer>
