@@ -9,56 +9,42 @@ import {
 import IponionLogo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
 import { auth, signOut, onAuthStateChanged } from "@/lib/firebase";
-
 export default function CustomerPortalPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
-
   const normalizePhone = (num: string) => {
     let clean = (num || "").replace(/[^0-9]/g, "");
     if (clean.startsWith("880")) clean = clean.slice(2);
     if (!clean.startsWith("0") && clean.length === 10) clean = "0" + clean;
     return clean;
   };
-
   const loadData = async (currentUser: any) => {
     const cleanPhone = normalizePhone(currentUser.phone || "");
     const last10 = cleanPhone.slice(-10);
     const userEmail = (currentUser.email || "").trim().toLowerCase();
-
     let supaList: any[] = [];
     try {
       const orList: string[] = [];
-      if (last10) {
-        orList.push(`customer_phone.ilike.%${last10}%`);
-      }
-      if (userEmail) {
-        orList.push(`customer_email.eq.${userEmail}`);
-      }
-
+      if (last10) orList.push(`customer_phone.ilike.%${last10}%`);
+      if (userEmail) orList.push(`customer_email.eq.${userEmail}`);
       if (orList.length > 0) {
         const { data, error } = await supabase
           .from("bookings")
           .select("*")
           .or(orList.join(","))
           .order("created_at", { ascending: false });
-
-        if (!error && data) {
-          supaList = data;
-        }
+        if (!error && data) supaList = data;
       }
     } catch (e) {
       console.warn("Supabase query error:", e);
     }
-
     let localList: any[] = [];
     try {
       const raw = localStorage.getItem("iponion_bookings");
@@ -73,7 +59,6 @@ export default function CustomerPortalPage() {
         }
       }
     } catch (e) {}
-
     const merged = [...supaList];
     const seen = new Set(supaList.map((b) => String(b.id)));
     for (const lb of localList) {
@@ -82,12 +67,10 @@ export default function CustomerPortalPage() {
         seen.add(String(lb.id));
       }
     }
-
     setBookings(merged);
     setLoading(false);
     setRefreshing(false);
   };
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
@@ -115,10 +98,8 @@ export default function CustomerPortalPage() {
         }
       }
     });
-
     return () => unsubscribe();
   }, [router]);
-
   const handleLogout = async () => {
     if (confirm("আপনি কি নিশ্চিত আপনার পোর্টাল থেকে লগআউট করতে চান?")) {
       try {
@@ -128,13 +109,11 @@ export default function CustomerPortalPage() {
       router.replace("/auth");
     }
   };
-
   const handleManualRefresh = () => {
     if (!user) return;
     setRefreshing(true);
     loadData(user);
   };
-
   const handleSaveReview = async () => {
     if (!selectedBookingForReview) return;
     try {
@@ -147,7 +126,6 @@ export default function CustomerPortalPage() {
         })
         .eq("id", selectedBookingForReview.id);
     } catch (e) {}
-
     setReviewSubmitted(true);
     setTimeout(() => {
       setSelectedBookingForReview(null);
@@ -155,7 +133,6 @@ export default function CustomerPortalPage() {
       if (user) loadData(user);
     }, 1500);
   };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Pending":
@@ -173,7 +150,6 @@ export default function CustomerPortalPage() {
         return <span className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-full text-xs font-bold">{status}</span>;
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -186,19 +162,16 @@ export default function CustomerPortalPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/"><IponionLogo size="sm" /></Link>
-
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <div className="text-xs font-bold text-slate-800">{user?.name || "সম্মানিত কাস্টমার"}</div>
               <div className="text-[11px] font-mono text-slate-500">{user?.email || user?.phone}</div>
             </div>
-
             <button
               onClick={handleManualRefresh}
               title="রিফ্রেশ করুন"
@@ -206,7 +179,6 @@ export default function CustomerPortalPage() {
             >
               <RefreshCw size={16} className={refreshing ? "animate-spin text-[#5894FF]" : ""} />
             </button>
-
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-bold transition-all"
@@ -217,7 +189,6 @@ export default function CustomerPortalPage() {
           </div>
         </div>
       </header>
-
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <div className="bg-gradient-to-r from-[#2D1457] to-[#1a0b33] rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -231,7 +202,6 @@ export default function CustomerPortalPage() {
               ইমেইল: <strong className="font-mono text-lime-400">{user?.email || "N/A"}</strong> • আপনার সমস্ত সার্ভিস বুকিং ও লাইভ স্ট্যাটাস
             </p>
           </div>
-
           <Link
             href="/#booking"
             className="px-4 py-2.5 bg-[#F53E00] hover:bg-[#d93700] text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0"
@@ -240,7 +210,6 @@ export default function CustomerPortalPage() {
             <ArrowRight size={14} />
           </Link>
         </div>
-
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -250,7 +219,6 @@ export default function CustomerPortalPage() {
               </span>
             </h2>
           </div>
-
           {bookings.length === 0 ? (
             <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm">
               <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -280,25 +248,21 @@ export default function CustomerPortalPage() {
                       <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
                       {getStatusBadge(b.status)}
                     </div>
-
                     <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
                       <span>বুকিং আইডি: <strong className="font-mono text-slate-700">{String(b.id).slice(0, 8)}...</strong></span>
                       {b.created_at && (
                         <span>তারিখ: {new Date(b.created_at).toLocaleDateString("bn-BD")}</span>
                       )}
                     </div>
-
                     <div className="text-xs text-slate-700 flex items-start gap-1.5">
                       <MapPin size={14} className="text-[#F53E00] shrink-0 mt-0.5" />
                       <span>{b.customer_address || b.area || "ঠিকানা সংরক্ষিত"}</span>
                     </div>
-
                     {b.problem_desc && (
                       <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
                         সমস্যা: {b.problem_desc}
                       </p>
                     )}
-
                     {b.assigned_engineer_name && (
                       <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
                         <div>
@@ -318,7 +282,6 @@ export default function CustomerPortalPage() {
                       </div>
                     )}
                   </div>
-
                   <div className="shrink-0 flex items-center gap-2">
                     {b.status === "Completed" && (
                       <button
@@ -333,7 +296,6 @@ export default function CustomerPortalPage() {
                         <span>{b.customer_rating ? "রিভিউ পরিবর্তন" : "⭐ রিভিউ দিন"}</span>
                       </button>
                     )}
-
                     <a
                       href="tel:01991477412"
                       className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1"
@@ -348,8 +310,6 @@ export default function CustomerPortalPage() {
           )}
         </div>
       </main>
-
-      {/* REVIEW MODAL */}
       {selectedBookingForReview && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200">
@@ -357,7 +317,6 @@ export default function CustomerPortalPage() {
             <p className="text-xs text-slate-500 mt-1">
               আমাদের ইঞ্জিনিয়ারের কাজের মান কেমন লেগেছে রেটিং দিন:
             </p>
-
             {reviewSubmitted ? (
               <div className="my-6 p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-center font-bold text-sm">
                 ধন্যবাদ! আপনার মূল্যবান মতামত সংরক্ষিত হয়েছে।
@@ -379,7 +338,6 @@ export default function CustomerPortalPage() {
                     </button>
                   ))}
                 </div>
-
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">আপনার মূল্যবান মন্তব্য</label>
                   <textarea
@@ -390,7 +348,6 @@ export default function CustomerPortalPage() {
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
                   />
                 </div>
-
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleSaveReview}

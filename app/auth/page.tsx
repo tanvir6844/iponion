@@ -17,7 +17,6 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged
 } from "@/lib/firebase";
-
 export default function AuthPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "register" | "forgot">("login");
@@ -30,7 +29,6 @@ export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && user.emailVerified) {
@@ -46,7 +44,6 @@ export default function AuthPage() {
     });
     return () => unsubscribe();
   }, [router, name, phone]);
-
   const handleGoogleSignIn = async () => {
     setError("");
     setGoogleLoading(true);
@@ -64,7 +61,6 @@ export default function AuthPage() {
       localStorage.setItem("iponion_user", JSON.stringify(userData));
       router.replace("/portal");
     } catch (err: any) {
-      console.error(err);
       if (err.code === "auth/popup-closed-by-user") {
         setError("গুগল সাইন-ইন উইন্ডো বন্ধ করা হয়েছে। আবার চেষ্টা করুন।");
       } else {
@@ -74,12 +70,10 @@ export default function AuthPage() {
       setGoogleLoading(false);
     }
   };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
-
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError("সবগুলো ফিল্ড পূরণ করুন।");
       return;
@@ -88,19 +82,16 @@ export default function AuthPage() {
       setError("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।");
       return;
     }
-
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await sendEmailVerification(userCredential.user);
-
       localStorage.setItem("iponion_user", JSON.stringify({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
         role: "customer"
       }));
-
       setSuccessMsg("🎉 রেজিস্ট্রেশন সফল হয়েছে! আপনার ইমেইল (" + email + ")-এ একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে। দয়া করে মেইল চেক করে লিংকে ক্লিক করুন।");
       setTab("login");
     } catch (err: any) {
@@ -115,23 +106,19 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
-
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
-
       if (!user.emailVerified) {
-        setError("⚠️ আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! অনুগ্রহ করে আপনার ইনবক্স চেক করে লিংকে ক্লিক করুন।");
+        setError("⚠️ আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! আপনার ইনবক্স চেক করে লিংকে ক্লিক করুন।");
         setLoading(false);
         return;
       }
-
       const userData = {
         name: user.displayName || name || "Customer",
         email: user.email,
@@ -150,7 +137,6 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
-
   const handleResendVerification = async () => {
     if (auth.currentUser) {
       try {
@@ -161,7 +147,6 @@ export default function AuthPage() {
       }
     }
   };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
@@ -178,7 +163,6 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a0b33] via-[#2D1457] to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20">
@@ -195,8 +179,6 @@ export default function AuthPage() {
             গুগল ও ফায়ারবেস সিকিউর অথেনটিকেশন
           </p>
         </div>
-
-        {/* GOOGLE SIGN IN BUTTON */}
         {tab !== "forgot" && (
           <div className="mb-5">
             <button
@@ -212,7 +194,6 @@ export default function AuthPage() {
               </svg>
               <span>{googleLoading ? "কানেক্ট হচ্ছে..." : "Google দিয়ে ১-ক্লিকে সাইন ইন"}</span>
             </button>
-
             <div className="flex items-center my-4">
               <div className="flex-1 border-t border-slate-200"></div>
               <span className="px-3 text-xs text-slate-400 font-semibold">অথবা ইমেইল ব্যবহার করুন</span>
@@ -220,8 +201,6 @@ export default function AuthPage() {
             </div>
           </div>
         )}
-
-        {/* ALERTS */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-semibold flex items-start gap-2">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -239,15 +218,12 @@ export default function AuthPage() {
             </div>
           </div>
         )}
-
         {successMsg && (
           <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold flex items-start gap-2">
             <CheckCircle2 size={16} className="shrink-0 text-emerald-600 mt-0.5" />
             <span>{successMsg}</span>
           </div>
         )}
-
-        {/* TABS */}
         <div className="flex border-b border-slate-200 mb-5">
           <button
             onClick={() => { setTab("login"); setError(""); setSuccessMsg(""); }}
@@ -262,8 +238,6 @@ export default function AuthPage() {
             নতুন রেজিস্ট্রেশন
           </button>
         </div>
-
-        {/* LOGIN FORM */}
         {tab === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -280,7 +254,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-slate-700">পাসওয়ার্ড *</label>
@@ -304,7 +277,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <button
               type="submit"
               disabled={loading}
@@ -315,8 +287,6 @@ export default function AuthPage() {
             </button>
           </form>
         )}
-
-        {/* REGISTER FORM */}
         {tab === "register" && (
           <form onSubmit={handleRegister} className="space-y-3.5">
             <div>
@@ -333,7 +303,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">ইমেইল অ্যাড্রেস *</label>
               <div className="relative">
@@ -348,7 +317,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">ফোন নম্বর (যোগাযোগের জন্য)</label>
               <div className="relative">
@@ -362,7 +330,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">পাসওয়ার্ড * (কমপক্ষে ৬ অক্ষর)</label>
               <div className="relative">
@@ -377,7 +344,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <button
               type="submit"
               disabled={loading}
@@ -388,8 +354,6 @@ export default function AuthPage() {
             </button>
           </form>
         )}
-
-        {/* FORGOT FORM */}
         {tab === "forgot" && (
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div>
@@ -406,7 +370,6 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-
             <button
               type="submit"
               disabled={loading}
@@ -414,7 +377,6 @@ export default function AuthPage() {
             >
               <span>{loading ? "পাঠানো হচ্ছে..." : "পাসওয়ার্ড রিসেট লিংক পাঠান"}</span>
             </button>
-
             <button
               type="button"
               onClick={() => setTab("login")}
@@ -424,7 +386,6 @@ export default function AuthPage() {
             </button>
           </form>
         )}
-
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           <Link href="/" className="text-xs text-[#5894FF] hover:underline font-semibold">
             ← হোমপেইজে ফিরে যান
