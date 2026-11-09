@@ -50,7 +50,10 @@ export default function AdminPage() {
         seen.add(String(lb.id));
       }
     }
-    setBookings(merged);
+        // Filter out permanently deleted IDs
+    const delList = JSON.parse(localStorage.getItem("iponion_deleted_ids") || "[]");
+    const activeBookings = merged.filter((b) => !delList.includes(String(b.id)));
+    setBookings(activeBookings);
 
     // Extract Registered Customers List
     const customerMap = new Map();
@@ -185,12 +188,35 @@ export default function AdminPage() {
     );
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি মুছে ফেলতে চান?")) return;
+    const handleDelete = async (id: string) => {
+    if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি স্থায়ীভাবে মুছে ফেলতে চান?")) return;
+
+    // 1. Delete from Supabase
     try {
       await supabase.from("bookings").delete().eq("id", id);
+    } catch (e) {
+      console.warn("Supabase delete notice:", e);
+    }
+
+    // 2. Remove permanently from localStorage
+    try {
+      const raw = localStorage.getItem("iponion_bookings");
+      if (raw) {
+        const list = JSON.parse(raw);
+        const filtered = list.filter((b: any) => String(b.id) !== String(id));
+        localStorage.setItem("iponion_bookings", JSON.stringify(filtered));
+      }
+
+      // 3. Add to deleted IDs blacklist so auto-polling NEVER brings it back
+      const delRaw = localStorage.getItem("iponion_deleted_ids") || "[]";
+      const delList = JSON.parse(delRaw);
+      if (!delList.includes(String(id))) {
+        delList.push(String(id));
+        localStorage.setItem("iponion_deleted_ids", JSON.stringify(delList));
+      }
     } catch (e) {}
 
+    // 4. Update UI State immediately
     setBookings((prev) => prev.filter((b) => String(b.id) !== String(id)));
   };
 

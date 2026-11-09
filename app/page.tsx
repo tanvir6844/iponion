@@ -60,7 +60,7 @@ export default function Home() {
     return clean;
   };
 
-  const handleBooking = async (e: React.FormEvent) => {
+    const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !area.trim()) {
       alert("অনুগ্রহ করে আপনার নাম, মোবাইল নম্বর এবং সম্পূর্ণ ঠিকানা লিখুন।");
@@ -71,6 +71,7 @@ export default function Home() {
     const cleanPhone = normalizePhone(phone);
     const customerEmail = email.trim() || (currentUser?.email || "");
 
+    // 1. Save user session locally
     const userSession = {
       name: name.trim(),
       phone: cleanPhone,
@@ -81,30 +82,40 @@ export default function Home() {
       localStorage.setItem("iponion_user", JSON.stringify(userSession));
     } catch (e) {}
 
-    const payload = {
+    // 2. Prepare safe description with date & time embedded
+    const scheduleInfo = `[তারিখ: ${bookingDate} | সময়: ${bookingTime}${customerEmail ? ` | ইমেইল: ${customerEmail}` : ""}]`;
+    const fullProblem = problem.trim() ? `${scheduleInfo} ${problem.trim()}` : scheduleInfo;
+
+    const basePayload = {
       service_title: service,
       customer_name: name.trim(),
       customer_phone: cleanPhone,
       customer_email: customerEmail || null,
       customer_address: area.trim(),
       area: area.trim(),
-      booking_date: bookingDate,
-      booking_time: bookingTime,
-      problem_desc: problem.trim() || "জরুরি সার্ভিস রিকোয়েস্ট",
-      status: "Pending",
-      created_at: new Date().toISOString()
+      problem_desc: fullProblem,
+      status: "Pending"
     };
 
-    let savedBooking = null;
+    let savedBooking: any = null;
 
+    // 3. Multi-tier insert into Supabase
     try {
-      const { data, error } = await supabase
-        .from("bookings")
-        .insert([payload])
-        .select();
+      // First try with booking_date & booking_time
+      const res1 = await supabase.from("bookings").insert([{
+        ...basePayload,
+        booking_date: bookingDate,
+        booking_time: bookingTime
+      }]).select();
 
-      if (!error && data && data.length > 0) {
-        savedBooking = data[0];
+      if (!res1.error && res1.data && res1.data.length > 0) {
+        savedBooking = res1.data[0];
+      } else {
+        // Fallback to core columns that always exist
+        const res2 = await supabase.from("bookings").insert([basePayload]).select();
+        if (res2.data && res2.data.length > 0) {
+          savedBooking = res2.data[0];
+        }
       }
     } catch (err) {
       console.warn("Supabase insert notice:", err);
@@ -113,16 +124,21 @@ export default function Home() {
     if (!savedBooking) {
       savedBooking = {
         id: "bk_" + Date.now(),
-        ...payload
+        ...basePayload,
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        created_at: new Date().toISOString()
       };
     }
 
+    // 4. Save to localStorage
     try {
       const existing = JSON.parse(localStorage.getItem("iponion_bookings") || "[]");
       existing.unshift(savedBooking);
       localStorage.setItem("iponion_bookings", JSON.stringify(existing));
     } catch (e) {}
 
+    // 5. Send Email Alert via FormSubmit
     try {
       fetch("https://formsubmit.co/ajax/iponion.11@gmail.com", {
         method: "POST",
