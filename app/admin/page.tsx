@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Shield, Phone, Clock, Calendar, CheckCircle2, AlertCircle, 
-  Trash2, Edit, RefreshCw, UserCheck, Wrench, Search, MapPin, Mail, LogOut
+  Trash2, Edit, RefreshCw, UserCheck, Wrench, Search, MapPin, Mail, LogOut,
+  Users, BookOpen, MessageSquare
 } from "lucide-react";
 import IponionLogo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
@@ -11,14 +12,15 @@ import { supabase } from "@/lib/supabase";
 export default function AdminPage() {
   const [pin, setPin] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [activeTab, setActiveTab] = useState<"bookings" | "customers">("bookings");
   const [bookings, setBookings] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Load Bookings
-  const loadBookings = async () => {
+  const loadAllData = async () => {
     let supaList: any[] = [];
     try {
       const { data, error } = await supabase
@@ -30,7 +32,7 @@ export default function AdminPage() {
         supaList = data;
       }
     } catch (e) {
-      console.warn("Supabase load error:", e);
+      console.warn("Supabase load notice:", e);
     }
 
     // Merge with localStorage
@@ -48,8 +50,70 @@ export default function AdminPage() {
         seen.add(String(lb.id));
       }
     }
-
     setBookings(merged);
+
+    // Extract Registered Customers List
+    const customerMap = new Map();
+
+    // 1. From merged bookings
+    merged.forEach((b) => {
+      const key = b.customer_phone || b.customer_email || b.customer_name;
+      if (key && !customerMap.has(key)) {
+        customerMap.set(key, {
+          name: b.customer_name || "সম্মানিত কাস্টমার",
+          phone: b.customer_phone || "N/A",
+          email: b.customer_email || "N/A",
+          address: b.customer_address || b.area || "ঢাকা",
+          totalBookings: 1,
+          lastBookingDate: b.created_at || new Date().toISOString()
+        });
+      } else if (key && customerMap.has(key)) {
+        const item = customerMap.get(key);
+        item.totalBookings += 1;
+      }
+    });
+
+    // 2. From localStorage registered customers
+    try {
+      const reg = localStorage.getItem("iponion_registered_customers");
+      if (reg) {
+        const parsed = JSON.parse(reg);
+        parsed.forEach((c: any) => {
+          const key = c.phone || c.email || c.name;
+          if (key && !customerMap.has(key)) {
+            customerMap.set(key, {
+              name: c.name || "Customer",
+              phone: c.phone || "N/A",
+              email: c.email || "N/A",
+              address: c.address || "ঢাকা",
+              totalBookings: 0,
+              lastBookingDate: c.created_at || new Date().toISOString()
+            });
+          }
+        });
+      }
+    } catch (e) {}
+
+    // 3. From current active session
+    try {
+      const active = localStorage.getItem("iponion_user");
+      if (active) {
+        const a = JSON.parse(active);
+        const key = a.phone || a.email || a.name;
+        if (key && !customerMap.has(key)) {
+          customerMap.set(key, {
+            name: a.name || "Customer",
+            phone: a.phone || "N/A",
+            email: a.email || "N/A",
+            address: a.address || "ঢাকা",
+            totalBookings: 0,
+            lastBookingDate: new Date().toISOString()
+          });
+        }
+      }
+    } catch (e) {}
+
+    setCustomers(Array.from(customerMap.values()));
     setLoading(false);
     setRefreshing(false);
   };
@@ -58,15 +122,15 @@ export default function AdminPage() {
     const savedPin = localStorage.getItem("iponion_admin_pin");
     if (savedPin === "1991" || savedPin === "1234") {
       setIsAuthenticated(true);
-      loadBookings();
+      loadAllData();
     } else {
       setLoading(false);
     }
 
-    // Auto poll every 3 seconds for live dashboard updates
+    // Auto poll every 3 seconds
     const interval = setInterval(() => {
       if (localStorage.getItem("iponion_admin_pin") === "1991") {
-        loadBookings();
+        loadAllData();
       }
     }, 3000);
     return () => clearInterval(interval);
@@ -77,7 +141,7 @@ export default function AdminPage() {
     if (pin === "1991" || pin === "1234") {
       localStorage.setItem("iponion_admin_pin", "1991");
       setIsAuthenticated(true);
-      loadBookings();
+      loadAllData();
     } else {
       alert("ভুল অ্যাডমিন পিন! অনুগ্রহ করে সঠিক পিন দিন।");
     }
@@ -91,7 +155,6 @@ export default function AdminPage() {
         .eq("id", id);
     } catch (e) {}
 
-    // Update local state
     setBookings((prev) =>
       prev.map((b) => (String(b.id) === String(id) ? { ...b, status: newStatus } : b))
     );
@@ -123,7 +186,7 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি ডিলিট করতে চান?")) return;
+    if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি মুছে ফেলতে চান?")) return;
     try {
       await supabase.from("bookings").delete().eq("id", id);
     } catch (e) {}
@@ -161,7 +224,7 @@ export default function AdminPage() {
     );
   }
 
-  const filtered = bookings.filter((b) => {
+  const filteredBookings = bookings.filter((b) => {
     const matchSearch =
       (b.customer_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (b.customer_phone || "").includes(search) ||
@@ -169,6 +232,12 @@ export default function AdminPage() {
     const matchStatus = statusFilter === "All" || b.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const filteredCustomers = customers.filter((c) =>
+    (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone || "").includes(search) ||
+    (c.email || "").toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-16">
@@ -184,7 +253,7 @@ export default function AdminPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setRefreshing(true); loadBookings(); }}
+              onClick={() => { setRefreshing(true); loadAllData(); }}
               className="p-2 text-slate-600 hover:text-[#5894FF] rounded-xl hover:bg-slate-100 transition-all"
               title="রিফ্রেশ করুন"
             >
@@ -209,155 +278,247 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-black text-[#2D1457]">সার্ভিস বুকিং কন্ট্রোল প্যানেল</h1>
+            <h1 className="text-2xl font-black text-[#2D1457]">সেন্ট্রাল অ্যাডমিন কন্ট্রোল প্যানেল</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              মোট বুকিং: <strong className="text-slate-800">{bookings.length} টি</strong> • প্রতি ৩ সেকেন্ডে অটো-সিঙ্ক হচ্ছে
+              বুকিং: <strong className="text-slate-800">{bookings.length} টি</strong> • রেজিস্টার্ড কাস্টমার: <strong className="text-slate-800">{customers.length} জন</strong>
             </p>
           </div>
 
-          {/* FILTERS */}
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-60">
-              <Search size={14} className="absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="নাম, ফোন বা সার্ভিস দিয়ে খুঁজুন..."
-                className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#5894FF]"
-              />
-            </div>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none"
+          {/* TABS */}
+          <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "bookings" ? "bg-[#2D1457] text-white shadow" : "text-slate-600 hover:text-slate-900"}`}
             >
-              <option value="All">সব স্ট্যাটাস</option>
-              <option value="Pending">Pending (অপেক্ষমান)</option>
-              <option value="Confirmed">Confirmed (নিশ্চিত)</option>
-              <option value="Assigned">Assigned (ইঞ্জিনিয়ার নিযুক্ত)</option>
-              <option value="Completed">Completed (সম্পন্ন)</option>
-              <option value="Cancelled">Cancelled (বাতিল)</option>
-            </select>
+              <BookOpen size={14} />
+              <span>সার্ভিস বুকিং ({bookings.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("customers")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "customers" ? "bg-[#2D1457] text-white shadow" : "text-slate-600 hover:text-slate-900"}`}
+            >
+              <Users size={14} />
+              <span>কাস্টমার ডাটাবেস ({customers.length})</span>
+            </button>
           </div>
         </div>
 
-        {/* BOOKINGS TABLE / CARDS */}
-        <div className="space-y-4">
-          {filtered.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
-              <p className="text-sm font-bold text-slate-600">কোনো বুকিং পাওয়া যায়নি।</p>
-            </div>
-          ) : (
-            filtered.map((b) => (
-              <div
-                key={b.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
-              >
-                <div className="space-y-2 flex-1">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="font-mono text-xs font-bold text-slate-400">#{String(b.id).slice(0, 8)}</span>
-                    <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
-                    
-                    <select
-                      value={b.status || "Pending"}
-                      onChange={(e) => handleStatusChange(b.id, e.target.value)}
-                      className="text-xs font-bold px-2.5 py-1 rounded-full border border-slate-300 bg-slate-50 cursor-pointer focus:outline-none"
-                    >
-                      <option value="Pending">⏳ Pending</option>
-                      <option value="Confirmed">✓ Confirmed</option>
-                      <option value="Assigned">🔧 Assigned</option>
-                      <option value="Completed">✅ Completed</option>
-                      <option value="Cancelled">✕ Cancelled</option>
-                    </select>
-                  </div>
+        {/* SEARCH BAR */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search size={14} className="absolute left-3.5 top-3 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="নাম, ফোন বা সার্ভিস দিয়ে ফিল্টার করুন..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#5894FF]"
+            />
+          </div>
 
-                  {/* CUSTOMER & DATE/TIME DETAILS */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">গ্রাহকের তথ্য</span>
-                      <strong className="text-slate-800 text-sm block">{b.customer_name}</strong>
-                      <a href={`tel:${b.customer_phone}`} className="font-mono text-[#5894FF] font-bold block">
-                        📞 {b.customer_phone}
-                      </a>
-                      {b.customer_email && (
-                        <span className="text-slate-500 font-mono text-[11px] block truncate">
-                          ✉️ {b.customer_email}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="p-2 bg-blue-50/60 rounded-xl border border-blue-100">
-                      <span className="text-blue-600 block text-[10px] uppercase font-black">📅 সার্ভিস নেওয়ার সময়সূচী</span>
-                      <div className="mt-0.5">
-                        <strong className="text-slate-900 block font-mono text-sm">
-                          তারিখ: {b.booking_date || "তাৎক্ষণিক"}
-                        </strong>
-                        <span className="text-slate-600 block text-[11px] font-semibold">
-                          সময়: {b.booking_time || "যেকোনো সময়"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">📍 ঠিকানা ও সমস্যা</span>
-                      <span className="text-slate-700 block truncate">{b.customer_address || b.area || "ঠিকানা দেওয়া হয়নি"}</span>
-                      {b.problem_desc && (
-                        <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1 italic">
-                          "{b.problem_desc}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ASSIGNED ENGINEER INFO */}
-                  {b.assigned_engineer_name && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
-                      <div>
-                        <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
-                        {b.assigned_engineer_phone && <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CREATED TIMESTAMP */}
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
-                    <Clock size={11} />
-                    <span>বুকিং তৈরি: {b.created_at ? new Date(b.created_at).toLocaleString("bn-BD") : "N/A"}</span>
-                  </div>
-                </div>
-
-                {/* ACTIONS */}
-                <div className="shrink-0 flex items-center gap-2">
-                  <button
-                    onClick={() => handleAssignEngineer(b.id)}
-                    className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1"
-                  >
-                    <Wrench size={12} />
-                    <span>ইঞ্জিনিয়ার অ্যাসাইন</span>
-                  </button>
-
-                  <a
-                    href={`tel:${b.customer_phone}`}
-                    className="p-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl text-xs font-bold"
-                    title="কল দিন"
-                  >
-                    <Phone size={15} />
-                  </a>
-
-                  <button
-                    onClick={() => handleDelete(b.id)}
-                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
-                    title="ডিলিট করুন"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))
+          {activeTab === "bookings" && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none"
+            >
+              <option value="All">সব স্ট্যাটাস</option>
+              <option value="Pending">⏳ Pending (অপেক্ষমান)</option>
+              <option value="Confirmed">✓ Confirmed (নিশ্চিত)</option>
+              <option value="Assigned">🔧 Assigned (ইঞ্জিনিয়ার নিযুক্ত)</option>
+              <option value="Completed">✅ Completed (সম্পন্ন)</option>
+              <option value="Cancelled">✕ Cancelled (বাতিল)</option>
+            </select>
           )}
         </div>
+
+        {/* TAB 1: BOOKINGS LIST */}
+        {activeTab === "bookings" && (
+          <div className="space-y-4">
+            {filteredBookings.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
+                <p className="text-sm font-bold text-slate-600">কোনো বুকিং পাওয়া যায়নি।</p>
+              </div>
+            ) : (
+              filteredBookings.map((b) => (
+                <div
+                  key={b.id}
+                  className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
+                >
+                  <div className="space-y-2 flex-1">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="font-mono text-xs font-bold text-slate-400">#{String(b.id).slice(0, 8)}</span>
+                      <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
+                      
+                      <select
+                        value={b.status || "Pending"}
+                        onChange={(e) => handleStatusChange(b.id, e.target.value)}
+                        className="text-xs font-bold px-2.5 py-1 rounded-full border border-slate-300 bg-slate-50 cursor-pointer focus:outline-none"
+                      >
+                        <option value="Pending">⏳ Pending</option>
+                        <option value="Confirmed">✓ Confirmed</option>
+                        <option value="Assigned">🔧 Assigned</option>
+                        <option value="Completed">✅ Completed</option>
+                        <option value="Cancelled">✕ Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">গ্রাহকের প্রোফাইল</span>
+                        <strong className="text-slate-900 text-sm block">{b.customer_name}</strong>
+                        <a href={`tel:${b.customer_phone}`} className="font-mono text-[#5894FF] font-bold block mt-0.5">
+                          📞 {b.customer_phone}
+                        </a>
+                        {b.customer_email && (
+                          <span className="text-slate-500 font-mono text-[11px] block truncate">
+                            ✉️ {b.customer_email}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100">
+                        <span className="text-blue-700 block text-[10px] uppercase font-black">📅 সার্ভিস শিডিউল</span>
+                        <div className="mt-0.5">
+                          <strong className="text-slate-900 block font-mono text-sm">
+                            তারিখ: {b.booking_date || "তাৎক্ষণিক"}
+                          </strong>
+                          <span className="text-slate-600 block text-[11px] font-semibold">
+                            সময়: {b.booking_time || "যেকোনো সময়"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">📍 ঠিকানা ও সমস্যা</span>
+                        <span className="text-slate-700 block truncate">{b.customer_address || b.area || "ঠিকানা দেওয়া হয়নি"}</span>
+                        {b.problem_desc && (
+                          <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1 italic">
+                            "{b.problem_desc}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {b.assigned_engineer_name && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+                        <div>
+                          <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
+                          {b.assigned_engineer_phone && <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                      <Clock size={11} />
+                      <span>রিকোয়েস্টের সময়: {b.created_at ? new Date(b.created_at).toLocaleString("bn-BD") : "N/A"}</span>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button
+                      onClick={() => handleAssignEngineer(b.id)}
+                      className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1"
+                    >
+                      <Wrench size={12} />
+                      <span>ইঞ্জিনিয়ার অ্যাসাইন</span>
+                    </button>
+
+                    <a
+                      href={`tel:${b.customer_phone}`}
+                      className="p-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl text-xs font-bold"
+                      title="কল দিন"
+                    >
+                      <Phone size={15} />
+                    </a>
+
+                    <button
+                      onClick={() => handleDelete(b.id)}
+                      className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
+                      title="ডিলিট করুন"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: REGISTERED CUSTOMER DATABASE */}
+        {activeTab === "customers" && (
+          <div className="space-y-4">
+            {filteredCustomers.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
+                <p className="text-sm font-bold text-slate-600">কোনো গ্রাহকের ডাটা পাওয়া যায়নি।</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCustomers.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">
+                          কাস্টমার #{idx + 1}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          মোট বুকিং: {c.totalBookings}
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-black text-[#2D1457]">{c.name}</h3>
+
+                      <div className="mt-2 space-y-1 text-xs">
+                        <div className="flex items-center gap-1.5 text-slate-700 font-mono">
+                          <Phone size={13} className="text-[#5894FF]" />
+                          <strong>{c.phone}</strong>
+                        </div>
+                        {c.email && c.email !== "N/A" && (
+                          <div className="flex items-center gap-1.5 text-slate-500 font-mono truncate">
+                            <Mail size={13} className="text-slate-400" />
+                            <span>{c.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-1.5 text-slate-600">
+                          <MapPin size={13} className="text-[#F53E00] shrink-0 mt-0.5" />
+                          <span className="truncate">{c.address}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        সর্বশেষ সক্রিয়: {new Date(c.lastBookingDate).toLocaleDateString("bn-BD")}
+                      </span>
+                      {c.phone && c.phone !== "N/A" && (
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={`tel:${c.phone}`}
+                            className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold"
+                          >
+                            কল
+                          </a>
+                          <a
+                            href={`https://wa.me/880${c.phone.replace(/^0/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-green-500 text-white rounded-lg text-xs font-bold"
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

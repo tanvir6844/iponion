@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   User, Phone, Clock, Calendar, CheckCircle2, AlertCircle, Wrench,
-  Star, LogOut, ArrowRight, RefreshCw, MessageCircle, MapPin
+  Star, LogOut, ArrowRight, RefreshCw, MessageCircle, MapPin, XCircle, RotateCcw
 } from "lucide-react";
 import IponionLogo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
@@ -17,6 +17,7 @@ export default function CustomerPortalPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Review modal state
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -53,6 +54,7 @@ export default function CustomerPortalPage() {
       console.warn("Supabase query error:", e);
     }
 
+    // LocalStorage fallback
     let localList: any[] = [];
     try {
       const raw = localStorage.getItem("iponion_bookings");
@@ -68,6 +70,7 @@ export default function CustomerPortalPage() {
       }
     } catch (e) {}
 
+    // Deduplicate and merge
     const merged = [...supaList];
     const seen = new Set(supaList.map((b) => String(b.id)));
     for (const lb of localList) {
@@ -84,14 +87,13 @@ export default function CustomerPortalPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      if (fbUser) {
-        // Also look up any saved phone
-        let savedPhone = "";
-        try {
-          const s = localStorage.getItem("iponion_user");
-          if (s) savedPhone = JSON.parse(s).phone || "";
-        } catch (e) {}
+      let savedPhone = "";
+      try {
+        const s = localStorage.getItem("iponion_user");
+        if (s) savedPhone = JSON.parse(s).phone || "";
+      } catch (e) {}
 
+      if (fbUser) {
         const u = {
           name: fbUser.displayName || "Customer",
           email: fbUser.email,
@@ -119,6 +121,68 @@ export default function CustomerPortalPage() {
 
     return () => unsubscribe();
   }, [router]);
+
+  // CANCEL BOOKING (Only when Pending and no engineer assigned)
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm("আপনি কি নিশ্চিত এই সার্ভিস বুকিংটি বাতিল করতে চান?")) return;
+
+    try {
+      await supabase
+        .from("bookings")
+        .update({ status: "Cancelled" })
+        .eq("id", bookingId);
+    } catch (e) {}
+
+    // Update localStorage
+    try {
+      const raw = localStorage.getItem("iponion_bookings");
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((b: any) =>
+          String(b.id) === String(bookingId) ? { ...b, status: "Cancelled" } : b
+        );
+        localStorage.setItem("iponion_bookings", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    // Update state
+    setBookings((prev) =>
+      prev.map((b) => (String(b.id) === String(bookingId) ? { ...b, status: "Cancelled" } : b))
+    );
+  };
+
+  // RE-BOOK CANCELLED SERVICE
+  const handleRebook = async (booking: any) => {
+    if (!confirm("আপনি কি এই সার্ভিসটি পুনরায় বুকিং সক্রিয় করতে চান?")) return;
+
+    try {
+      await supabase
+        .from("bookings")
+        .update({
+          status: "Pending",
+          created_at: new Date().toISOString()
+        })
+        .eq("id", booking.id);
+    } catch (e) {}
+
+    // Update localStorage
+    try {
+      const raw = localStorage.getItem("iponion_bookings");
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((b: any) =>
+          String(b.id) === String(booking.id) ? { ...b, status: "Pending" } : b
+        );
+        localStorage.setItem("iponion_bookings", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    // Update state
+    setBookings((prev) =>
+      prev.map((b) => (String(b.id) === String(booking.id) ? { ...b, status: "Pending" } : b))
+    );
+    alert("আপনার সার্ভিস বুকিংটি পুনরায় সক্রিয় করা হয়েছে! খুব শীঘ্রই আমাদের টিম যোগাযোগ করবে।");
+  };
 
   const handleLogout = async () => {
     if (confirm("আপনি কি নিশ্চিত আপনার পোর্টাল থেকে লগআউট করতে চান?")) {
@@ -190,6 +254,7 @@ export default function CustomerPortalPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
+      {/* HEADER */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/"><IponionLogo size="sm" /></Link>
@@ -219,6 +284,7 @@ export default function CustomerPortalPage() {
         </div>
       </header>
 
+      {/* BODY */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <div className="bg-gradient-to-r from-[#2D1457] to-[#1a0b33] rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -242,6 +308,7 @@ export default function CustomerPortalPage() {
           </Link>
         </div>
 
+        {/* BOOKINGS LIST */}
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -271,86 +338,115 @@ export default function CustomerPortalPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {bookings.map((b) => (
-                <div
-                  key={b.id}
-                  className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
-                      {getStatusBadge(b.status)}
-                    </div>
+              {bookings.map((b) => {
+                const canCancel = b.status === "Pending" && !b.assigned_engineer_name;
+                const isCancelled = b.status === "Cancelled";
 
-                    {/* SCHEDULED DATE & TIME BADGE */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span className="flex items-center gap-1 text-[#2D1457] font-bold">
-                        <Calendar size={13} className="text-[#5894FF]" />
-                        তারিখ: {b.booking_date || "তাৎক্ষণিক"}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1 text-[#2D1457] font-bold">
-                        <Clock size={13} className="text-amber-500" />
-                        সময়: {b.booking_time || "যেকোনো সময়"}
-                      </span>
-                    </div>
+                return (
+                  <div
+                    key={b.id}
+                    className={`bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isCancelled ? "border-slate-200 opacity-80 bg-slate-50/50" : "border-slate-200"}`}
+                  >
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-black text-[#2D1457]">{b.service_title}</h3>
+                        {getStatusBadge(b.status)}
+                      </div>
 
-                    <div className="text-xs text-slate-700 flex items-start gap-1.5">
-                      <MapPin size={14} className="text-[#F53E00] shrink-0 mt-0.5" />
-                      <span>{b.customer_address || b.area || "ঠিকানা সংরক্ষিত"}</span>
-                    </div>
+                      {/* SCHEDULED DATE & TIME */}
+                      <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span className="flex items-center gap-1 text-[#2D1457] font-bold">
+                          <Calendar size={13} className="text-[#5894FF]" />
+                          তারিখ: {b.booking_date || "তাৎক্ষণিক"}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-[#2D1457] font-bold">
+                          <Clock size={13} className="text-amber-500" />
+                          সময়: {b.booking_time || "যেকোনো সময়"}
+                        </span>
+                      </div>
 
-                    {b.problem_desc && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        সমস্যা: {b.problem_desc}
-                      </p>
-                    )}
+                      <div className="text-xs text-slate-700 flex items-start gap-1.5">
+                        <MapPin size={14} className="text-[#F53E00] shrink-0 mt-0.5" />
+                        <span>{b.customer_address || b.area || "ঠিকানা সংরক্ষিত"}</span>
+                      </div>
 
-                    {b.assigned_engineer_name && (
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
-                        <div>
-                          <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
+                      {b.problem_desc && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          সমস্যা: {b.problem_desc}
+                        </p>
+                      )}
+
+                      {b.assigned_engineer_name && (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+                          <div>
+                            <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
+                            {b.assigned_engineer_phone && (
+                              <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>
+                            )}
+                          </div>
                           {b.assigned_engineer_phone && (
-                            <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>
+                            <a
+                              href={`tel:${b.assigned_engineer_phone}`}
+                              className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-[11px]"
+                            >
+                              কল করুন
+                            </a>
                           )}
                         </div>
-                        {b.assigned_engineer_phone && (
-                          <a
-                            href={`tel:${b.assigned_engineer_phone}`}
-                            className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-[11px]"
-                          >
-                            কল করুন
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="shrink-0 flex items-center gap-2">
-                    {b.status === "Completed" && (
-                      <button
-                        onClick={() => {
-                          setSelectedBookingForReview(b);
-                          setRating(b.customer_rating || 5);
-                          setReviewComment(b.customer_review || "");
-                        }}
-                        className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+                    {/* ACTION BUTTONS (CANCEL / RE-BOOK / REVIEW) */}
+                    <div className="shrink-0 flex flex-wrap items-center gap-2">
+                      {/* 1. Cancel Option (Pending & No Engineer) */}
+                      {canCancel && (
+                        <button
+                          onClick={() => handleCancelBooking(b.id)}
+                          className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1 transition-all"
+                        >
+                          <XCircle size={14} />
+                          <span>বুকিং বাতিল করুন</span>
+                        </button>
+                      )}
+
+                      {/* 2. Re-book Option (If Cancelled) */}
+                      {isCancelled && (
+                        <button
+                          onClick={() => handleRebook(b)}
+                          className="px-3.5 py-2 bg-[#5894FF] hover:bg-[#437ee8] text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                        >
+                          <RotateCcw size={14} />
+                          <span>পুনরায় বুকিং সক্রিয় করুন</span>
+                        </button>
+                      )}
+
+                      {/* 3. Review Option (Completed) */}
+                      {b.status === "Completed" && (
+                        <button
+                          onClick={() => {
+                            setSelectedBookingForReview(b);
+                            setRating(b.customer_rating || 5);
+                            setReviewComment(b.customer_review || "");
+                          }}
+                          className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+                        >
+                          <Star size={14} fill="white" />
+                          <span>{b.customer_rating ? "রিভিউ পরিবর্তন" : "⭐ রিভিউ দিন"}</span>
+                        </button>
+                      )}
+
+                      <a
+                        href="tel:01991477412"
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1"
                       >
-                        <Star size={14} fill="white" />
-                        <span>{b.customer_rating ? "রিভিউ পরিবর্তন" : "⭐ রিভিউ দিন"}</span>
-                      </button>
-                    )}
-
-                    <a
-                      href="tel:01991477412"
-                      className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1"
-                    >
-                      <Phone size={13} />
-                      <span>সাপোর্ট</span>
-                    </a>
+                        <Phone size={13} />
+                        <span>সাপোর্ট</span>
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
