@@ -2,558 +2,544 @@
 
 import { useState, useEffect } from "react";
 import IponionLogo from "@/components/Logo";
-import { Phone, MessageCircle, MapPin, Zap, CheckCircle2, Globe, X, User, Shield, Star, Clock, Server, ArrowRight, ShieldCheck, Cpu, Activity, Award } from "lucide-react";
+import { Phone, MessageCircle, MapPin, Zap, CheckCircle2, Globe, X, User, Shield, Star, Clock, Server, Check, ArrowRight, Wrench } from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
-  const [lang, setLang] = useState("bn");
+  const [lang, setLang] = useState<"bn" | "en">("bn");
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [bookingData, setBookingData] = useState(null);
+  const [bookingData, setBookingData] = useState<any>(null);
 
-  // Form Fields
+  const [service, setService] = useState("Wi-Fi ও রাউটার ট্রাবলশুটিং");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [selectedService, setSelectedService] = useState("");
   const [area, setArea] = useState("");
   const [desc, setDesc] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedLang = localStorage.getItem("iponion_lang");
+      const savedLang = localStorage.getItem("iponion_lang") as "bn" | "en";
       if (savedLang) setLang(savedLang);
     }
   }, []);
 
-  const toggleLang = () => {
-    const next = lang === "bn" ? "en" : "bn";
-    setLang(next);
-    localStorage.setItem("iponion_lang", next);
+  const toggleLang = (newLang: "bn" | "en") => {
+    setLang(newLang);
+    localStorage.setItem("iponion_lang", newLang);
   };
 
-  const t = {
-    bn: {
-      badge: "২৪/৭ অন-ডিমান্ড হোম ও অফিস আইটি সাপোর্ট",
-      heroTitle1: "স্মার্ট আইটি সলিউশন",
-      heroTitle2: "এর সাথে",
-      heroDesc: "রাউটার, ওয়াইফাই অপটিমাইজেশন, ল্যাপটপ, ডেস্কটপ, নেটওয়ার্ক ক্যাবলিং ও সিসিটিভি ক্যামেরার যেকোনো জটিল সমস্যার দ্রুত ও নির্ভরযোগ্য ২৪/৭ সমাধান সমগ্র ঢাকা জুড়ে।",
-      btnBook: "সার্ভিস বুক করুন",
-      btnHotline: "হটলাইন কল (২৪/৭)",
-      btnWA: "WhatsApp চ্যাট",
-      stat1Num: "১,০০০+",
-      stat1Txt: "সফল হোম ও অফিস সাপোর্ট",
-      stat2Num: "২৪/৭",
-      stat2Txt: "সার্বক্ষণিক জরুরি সেবা",
-      stat3Num: "৫০+",
-      stat3Txt: "মাসিক AMC ক্লায়েন্ট",
-      stat4Num: "১০০%",
-      stat4Txt: "সমগ্র ঢাকায় হোম ডেলিভারি",
-      servicesTag: "আমাদের সেবাসমূহ",
-      servicesTitle: "পেশাদার আইটি সমাধান",
-      servicesSubtitle: "বাসাবাড়ি ও অফিসের জন্য প্রয়োজনীয় হার্ডওয়্যার, সফটওয়্যার ও এন্টারপ্রাইজ নেটওয়ার্কিং সেবা",
-      priceFrom: "শুরু ৳",
-      bookNow: "বুক করুন",
-      formTag: "অনলাইন সার্ভিস বুকিং",
-      formTitle: "আইটি সাপোর্ট সার্ভিস বুকিং ফর্ম",
-      formDesc: "ফর্মটি পূরণ করুন। আমাদের সাপোর্ট টিম অবিলম্বে ফোনে আপনার সাথে যোগাযোগ করবে।",
-      lblName: "আপনার পূর্ণ নাম *",
-      lblPhone: "মোবাইল নম্বর *",
-      lblService: "প্রয়োজনীয় সার্ভিস নির্বাচন করুন *",
-      lblArea: "লোকেশন / এলাকা (সমগ্র ঢাকা) *",
-      lblDesc: "সমস্যার বিবরণ (ঐচ্ছিক)...",
-      btnSubmit: "বুকিং কনফার্ম করুন",
-      btnSubmitting: "বুকিং প্রসেসিং হচ্ছে...",
-      modalTitle: "বুকিং সফলভাবে সম্পন্ন হয়েছে!",
-      modalDesc: "ধন্যবাদ! আপনার সার্ভিস রিকোয়েস্ট সরাসরি IPonion সাপোর্ট টিম ও অ্যাডমিন প্যানেলে পৌঁছে গেছে। আমাদের ইঞ্জিনিয়ার দ্রুত আপনার সাথে ফোনে যোগাযোগ করবে।",
-      modalBtn: "ঠিক আছে",
-      reviewsTag: "ক্লায়েন্ট রিভিউ",
-      reviewsTitle: "সন্তুষ্ট গ্রাহকদের অভিজ্ঞতা",
-      reviewsSubtitle: "ঢাকা শহরের বাসা ও অফিস ক্লায়েন্টদের ১০০% খাঁটি মতামত",
-      worksWithTag: "Hardware & Network Technology",
-      worksWithTitle: "যেসব শীর্ষ প্রযুক্তির সাথে আমরা কাজ করি",
-      worksWithSubtitle: "আন্তর্জাতিক মানের এন্টারপ্রাইজ হার্ডওয়্যার ও রাউটিং প্রযুক্তি দিয়ে আমরা সাপোর্ট প্রদান করি",
-      contactTag: "যোগাযোগ ও হাব",
-      contactTitle: "অফিস ঠিকানা ও লোকেশন",
-      contactSubtitle: "যেকোনো জরুরি প্রয়োজনে ২৪/৭ সরাসরি অফিসে চলে আসুন বা হটলাইনে কল দিন",
-      addressLabel: "অফিস হাব:",
-      addressText: "House: 27, Road: 04, Block: D, Bosila Garden City, Mohammadpur, Dhaka",
-      hotlineLabel: "২৪/৭ সাপোর্ট হটলাইন:",
-      waLabel: "সরাসরি WhatsApp চ্যাট:",
-      footerRights: "সর্বস্বত্ব সংরক্ষিত। 24/7 IT Support across Dhaka. Hotline: 01991-477412",
-      navPortal: "Customer Portal",
-      navAdmin: "Admin",
-      servicesList: [
-        { id: "s1", title: "Wi-Fi ও রাউটার ট্রাবলশুটিং", price: 600, desc: "গতি কমে যাওয়া, ঘন ঘন ডিসকানেকশন ও ডুয়াল-ব্যান্ড সিকিউরিটি অপটিমাইজেশন।", icon: "📶" },
-        { id: "s2", title: "হোম ও অফিস নেটওয়ার্ক সেটআপ", price: 1500, desc: "Cat6 ক্যাবলিং, গিগাবিট সুইচ, মাইক্রোটিক কনফিগ ও ব্যান্ডউইথ ম্যানেজমেন্ট।", icon: "🖧" },
-        { id: "s3", title: "ল্যাপটপ ও ডেস্কটপ মেরামত", price: 600, desc: "ফ্রিজিং, ব্লু-স্ক্রিন, নো-ডিসপ্লে, থার্মাল পেস্ট পরিবর্তন ও হার্ডওয়্যার ডায়াগনোসিস।", icon: "💻" },
-        { id: "s4", title: "উইন্ডোজ, সফটওয়্যার ও প্রিন্টার সেটআপ", price: 1000, desc: "ক্লিন উইন্ডোজ ১০/১১, অফিস, নেটওয়ার্ক প্রিন্টার/স্ক্যানার সেটআপ ও ড্রাইভার ফিক্স।", icon: "🖨️" },
-        { id: "s5", title: "সিসিটিভি ও আইপি ক্যামেরা সেটআপ", price: 1200, desc: "কমপ্লিট ক্যামেরা ইন্সটলেশন, ডিভিআর/এনভিআর কনফিগ ও ২৪/৭ মোবাইল লাইভ-ভিউ।", icon: "📹" },
-        { id: "s6", title: "পিসি আপগ্রেড, এসএসডি/র‍্যাম ও ব্যাকআপ", price: 600, desc: "এসএসডি/র‍্যাম আপগ্রেড করে পুরনো পিসি ফাস্ট করা, ওএস ক্লোনিং ও ডাটা ব্যাকআপ।", icon: "⚡" },
-        { id: "s7", title: "রিমোট অনলাইন আইটি সাপোর্ট", price: 500, desc: "অ্যানিডেস্কের মাধ্যমে তাৎক্ষণিক সফটওয়্যার ফিক্স, ইমেইল কনফিগ ও এরর সমাধান।", icon: "🌐" },
-        { id: "s8", title: "মাসিক আইটি রক্ষণাবেক্ষণ (AMC)", price: 4000, desc: "অফিসের জন্য সার্বক্ষণিক নিয়মিত প্রিভেন্টিভ মেইনটেন্যান্স ও ইমার্জেন্সি সাপোর্ট।", icon: "🏢" }
-      ],
-      reviewsList: [
-        { name: "আরিফুল ইসলাম", location: "মোহাম্মদপুর, ঢাকা", role: "ব্যবসা পরিচালক", text: "আমাদের অফিসে ২০টি কম্পিউটারের নেটওয়ার্কিং ও মাইক্রোটিক ব্যান্ডউইথ কনফিগারেশন নিখুঁতভাবে শেষ করেছেন। নেট স্পিড চমৎকার!", rating: 5 },
-        { name: "সাবরিনা সুলতানা", location: "ধানমন্ডি, ঢাকা", role: "হোম ইউজার", text: "বাসার ৩য় তলায় ওয়াইফাই সিগন্যাল পেতাম না। IPonion টেকনিশিয়ান এসে ১ ঘণ্টার মধ্যে রাউটার অপটিমাইজ ও এক্সটেন্ডার বসিয়ে সমাধান করে দেন।", rating: 5 },
-        { name: "ইঞ্জি. তানভীর হাসান", location: "মিরপুর ডিওএইচএস", role: "সফটওয়্যার ডেভেলপার", text: "ল্যাপটপ ঘন ঘন ব্লু-স্ক্রিন দিয়ে বন্ধ হয়ে যাচ্ছিল। বাসায় এসে থার্মাল পেস্ট পরিবর্তন ও উইন্ডোজ ক্লিন ইন্সটল করে দেন। খুবই প্রফেশনাল!", rating: 5 },
-        { name: "রাশেদ চৌধুরী", location: "বসিলা গার্ডেন সিটি", role: "অফিস ম্যানেজার", text: "নতুন অফিসের ৮টি সিসিটিভি ক্যামেরা ও মোবাইল লাইভ-ভিউ সেটআপ খুব নিখুঁতভাবে সম্পন্ন করেছেন। ২৪/৭ টেকনিক্যাল সাপোর্ট দারুণ!", rating: 5 }
-      ]
-    },
-    en: {
-      badge: "24/7 On-Demand Home & Office IT Support",
-      heroTitle1: "Smart IT & Network Solutions",
-      heroTitle2: "with",
-      heroDesc: "Fast, reliable 24/7 troubleshooting for routers, Wi-Fi, laptops, desktops, network cabling, and CCTV cameras across whole Dhaka.",
-      btnBook: "Book a Service",
-      btnHotline: "Call Hotline (24/7)",
-      btnWA: "WhatsApp Chat",
-      stat1Num: "1,000+",
-      stat1Txt: "Completed Jobs in Dhaka",
-      stat2Num: "24/7",
-      stat2Txt: "Round-the-clock Support",
-      stat3Num: "50+",
-      stat3Txt: "Active AMC Office Clients",
-      stat4Num: "100%",
-      stat4Txt: "Doorstep Visits Covered",
-      servicesTag: "Our Services",
-      servicesTitle: "Professional IT Solutions",
-      servicesSubtitle: "Essential hardware, software, and networking support for homes and small offices",
-      priceFrom: "From BDT ",
-      bookNow: "Book",
-      formTag: "Online Booking",
-      formTitle: "Book an IT Support Service",
-      formDesc: "Fill in the form. Our support team will contact you immediately via phone.",
-      lblName: "Your Full Name *",
-      lblPhone: "Phone Number *",
-      lblService: "Select Required Service *",
-      lblArea: "Location / Area (Whole Dhaka) *",
-      lblDesc: "Brief Description of Problem (Optional)...",
-      btnSubmit: "Confirm Booking",
-      btnSubmitting: "Processing Booking...",
-      modalTitle: "Booking Confirmed Successfully!",
-      modalDesc: "Thank you! Your service request has been received by the IPonion support team. Our engineer will contact you shortly.",
-      modalBtn: "Done / OK",
-      reviewsTag: "Client Testimonials",
-      reviewsTitle: "What Our Clients Say",
-      reviewsSubtitle: "100% genuine feedback from homeowners and office businesses across Dhaka",
-      worksWithTag: "Enterprise Hardware & Tech",
-      worksWithTitle: "Technologies & Brands We Work With",
-      worksWithSubtitle: "We engineer, configure, and troubleshoot enterprise-grade hardware standards",
-      contactTag: "Contact & Hub",
-      contactTitle: "Office Address & Map",
-      contactSubtitle: "Visit our office hub or call our 24/7 helpline anytime for instant support",
-      addressLabel: "Office Hub:",
-      addressText: "House: 27, Road: 04, Block: D, Bosila Garden City, Mohammadpur, Dhaka",
-      hotlineLabel: "24/7 Hotline:",
-      waLabel: "Direct WhatsApp:",
-      footerRights: "All Rights Reserved. 24/7 Fast & Reliable IT Support across Dhaka. Hotline: 01991-477412",
-      navPortal: "Customer Portal",
-      navAdmin: "Admin",
-      servicesList: [
-        { id: "s1", title: "Wi-Fi & Router Troubleshooting", price: 600, desc: "Fix speed drops, frequent disconnections, dead zones, & dual-band security.", icon: "📶" },
-        { id: "s2", title: "Home & Office Network Setup", price: 1500, desc: "Cat6 cabling, Gigabit switches, MikroTik router config & bandwidth control.", icon: "🖧" },
-        { id: "s3", title: "Laptop & Desktop Repair/Support", price: 600, desc: "Fix freezing, blue screen crashes, thermal paste replacement & diagnosis.", icon: "💻" },
-        { id: "s4", title: "Windows, Software & Printer Setup", price: 1000, desc: "Clean Windows 10/11 install, MS Office, network printer/scanner setup.", icon: "🖨️" },
-        { id: "s5", title: "CCTV & IP Camera Setup", price: 1200, desc: "Complete CCTV & IP camera installation, DVR/NVR config & 24/7 mobile live-view.", icon: "📹" },
-        { id: "s6", title: "PC Upgrades, SSD/RAM & Backup", price: 600, desc: "Speed up old machines with NVMe/SATA SSDs, RAM upgrade & OS cloning.", icon: "⚡" },
-        { id: "s7", title: "Remote Online IT Support", price: 500, desc: "Instant online help anywhere in Bangladesh via AnyDesk for quick fixes.", icon: "🌐" },
-        { id: "s8", title: "Monthly IT Maintenance (AMC)", price: 4000, desc: "Complete maintenance contract for small offices: routine checks & priority SLA.", icon: "🏢" }
-      ],
-      reviewsList: [
-        { name: "Ariful Islam", location: "Mohammadpur, Dhaka", role: "Business Director", text: "Configured structured cabling and MikroTik bandwidth management for 20 office PCs. Internet connection has been rock solid since then!", rating: 5 },
-        { name: "Sabrina Sultana", location: "Dhanmondi, Dhaka", role: "Home Client", text: "Had zero Wi-Fi signal on the 3rd floor. IPonion technician arrived within an hour, optimized the router and installed an extender. Highly recommended!", rating: 5 },
-        { name: "Engr. Tanvir Hasan", location: "Mirpur DOHS", role: "Software Engineer", text: "My laptop suffered sudden blue-screen freezes. The engineer serviced the thermal paste and clean-installed OS at home. Very professional and safe.", rating: 5 },
-        { name: "Rashed Chowdhury", location: "Bosila Garden City", role: "Office Manager", text: "Installed 8 HD CCTV cameras and configured 24/7 mobile live-view access with great care. Outstanding 24/7 technical support!", rating: 5 }
-      ]
-    }
-  };
-
-  const curr = t[lang];
-
-  const handleBooking = async (e) => {
+  const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    if (!phone || !service) return;
 
+    setSubmitting(true);
+    const newBooking = {
+      id: "bk_" + Date.now(),
+      service_title: service,
+      customer_name: name || (lang === "bn" ? "সম্মানিত কাস্টমার" : "Valued Customer"),
+      customer_phone: phone,
+      customer_address: area || "Mohammadpur, Dhaka",
+      area: area || "Dhaka",
+      problem_desc: desc,
+      status: "Pending",
+      created_at: new Date().toISOString()
+    };
+
+    // Save in LocalStorage
     try {
-      const res = await fetch("/api/bookings", {
+      const existing = localStorage.getItem("iponion_bookings");
+      const list = existing ? JSON.parse(existing) : [];
+      list.unshift(newBooking);
+      localStorage.setItem("iponion_bookings", JSON.stringify(list));
+    } catch (err) {}
+
+    // Send FormSubmit Notification to Admin Emails
+    try {
+      await fetch("https://formsubmit.co/ajax/iponion.11@gmail.com", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          customer_name: name,
-          phone,
-          service_title: selectedService,
-          area,
-          problem_desc: desc
+          _subject: `🚨 নতুন বুকিং: ${service} - ${name} (${phone})`,
+          _cc: "tanvirahmedtanvir68441@gmail.com",
+          _template: "table",
+          "Service Requested": service,
+          "Customer Name": name,
+          "Customer Phone": phone,
+          "Customer Address": area,
+          "Problem Note": desc || "N/A",
+          "Timestamp": new Date().toLocaleString()
         })
       });
+    } catch (err) {}
 
-      const data = await res.json();
-      if (data.success) {
-        setBookingData({ name, phone, service: selectedService, area });
-        setShowModal(true);
-        setName("");
-        setPhone("");
-        setSelectedService("");
-        setArea("");
-        setDesc("");
-      } else {
-        alert("Error: " + (data.error || "Failed to submit booking"));
-      }
-    } catch (err) {
-      alert("Submission error! Please check your network connection.");
-    } finally {
-      setSubmitting(false);
-    }
+    setBookingData(newBooking);
+    setSubmitting(false);
+    setShowModal(true);
+
+    // Reset Form
+    setName("");
+    setPhone("");
+    setArea("");
+    setDesc("");
   };
 
+  const services = [
+    {
+      title_bn: "Wi-Fi ও রাউটার ট্রাবলশুটিং",
+      title_en: "Wi-Fi & Router Troubleshooting",
+      desc_bn: "স্পিড ড্রপ, সিগন্যাল ডেড-জোন দূরীকরণ ও নেটওয়ার্ক কনফিগারেশন।",
+      desc_en: "Eliminate dead-zones, fix slow speeds and seamless dual-band Wi-Fi setup.",
+      price_bn: "৳৫০০ থেকে শুরু",
+      price_en: "Starts from ৳500"
+    },
+    {
+      title_bn: "বাসা ও অফিসের ল্যান (LAN) নেটওয়ার্কিং",
+      title_en: "Home & Office LAN Networking",
+      desc_bn: "ক্যাট-৬ ক্যাবলিং, সুইটচ ও প্যাচ প্যানেল ড্রেসিং এবং হাই-স্পিড লোকাল নেটওয়ার্ক।",
+      desc_en: "Structured Cat6 cabling, switch setup, and high-speed office connectivity.",
+      price_bn: "৳১,২০০ থেকে শুরু",
+      price_en: "Starts from ৳1,200"
+    },
+    {
+      title_bn: "সরাসরি অন-সাইট কম্পিউটার ও ল্যাপটপ রিপেয়ার",
+      title_en: "On-Site Computer & Laptop Repair",
+      desc_bn: "উইন্ডোজ সেটআপ, র‍্যাম/এসএসডি আপগ্রেড, ওভারহিটিং ও মাদারবোর্ড সমাধান।",
+      desc_en: "OS installation, SSD/RAM upgrades, thermal throttling fix, hardware servicing.",
+      price_bn: "৳৮০০ থেকে শুরু",
+      price_en: "Starts from ৳800"
+    },
+    {
+      title_bn: "CCTV ও আইপি ক্যামেরা সেটআপ",
+      title_en: "CCTV & IP Camera Security Setup",
+      desc_bn: "HD/IP ক্যামেরা ইনস্টলেশন, DVR/NVR কনফিগারেশন ও মোবাইলে সার্বক্ষণিক লাইভ ভিউ।",
+      desc_en: "HD/IP camera mounting, NVR/DVR setup, and 24/7 mobile live streaming.",
+      price_bn: "৳১,৫০০ থেকে শুরু",
+      price_en: "Starts from ৳1,500"
+    },
+    {
+      title_bn: "মাইক্রোটিক ও এন্টারপ্রাইজ ফায়ারওয়াল",
+      title_en: "MikroTik & Enterprise Firewall",
+      desc_bn: "ব্যান্ডউইথ কন্ট্রোল, লোড ব্যালেন্সিং, ভিপিএন এবং সিকিউরিটি পলিসি কনফিগারেশন।",
+      desc_en: "Bandwidth queueing, load balancing, multi-WAN failover, and secure VPNs.",
+      price_bn: "৳২,০০০ থেকে শুরু",
+      price_en: "Starts from ৳2,000"
+    },
+    {
+      title_bn: "রিমোট অনলাইন আইটি সাপোর্ট (Remote)",
+      title_en: "Instant Remote Online IT Support",
+      desc_bn: "AnyDesk বা TeamViewer দিয়ে দূর থেকেই সফ্টওয়্যার, প্রিন্টার ও জরুরি সমাধান।",
+      desc_en: "Fast remote assistance for software crashes, printer drivers, and mail issues.",
+      price_bn: "৳৩০০ থেকে শুরু",
+      price_en: "Starts from ৳300"
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans relative selection:bg-[#FF6B57] selection:text-white">
-      {/* Background Tech Glow & Grid Mesh */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-200/25 rounded-full blur-[120px] -translate-y-1/2"></div>
-        <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-orange-100/35 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-1/4 left-10 w-[600px] h-[600px] bg-emerald-100/25 rounded-full blur-[130px]"></div>
-      </div>
+    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased selection:bg-[#FF6B57] selection:text-white">
+      {/* 1. TOP PORTAL ACCESS STRIP (ALADA LOGIN BAR) */}
+      <div className="bg-[#1a0b33] text-white text-[11px] py-1.5 px-4 border-b border-white/10">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-4 text-slate-300">
+            <span className="flex items-center gap-1.5">
+              <Phone size={11} className="text-lime-400" />
+              হটলাইন: <strong className="text-white font-mono">01991477412</strong>
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1">
+              <Clock size={11} className="text-amber-400" /> ২৪/৭ অন-কল সাপোর্ট
+            </span>
+          </div>
 
-      {/* Header Navbar */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-95 transition">
-            <IponionLogo size={42} />
-          </Link>
-
-          <nav className="flex items-center gap-2.5 sm:gap-4">
-            <button
-              onClick={toggleLang}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-300 hover:border-[#2D1457] text-xs font-bold text-slate-700 hover:text-[#2D1457] bg-white transition shadow-sm"
-              title="Toggle Language"
-            >
-              <Globe size={14} className="text-[#FF6B57]" />
-              <span>{lang === "bn" ? "English" : "বাংলা"}</span>
-            </button>
-
+          {/* DEDICATED PORTAL BUTTONS */}
+          <div className="flex items-center gap-2">
             <Link
-              href="/portal"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-violet-50 text-[#2D1457] font-bold text-xs hover:bg-violet-100 transition border border-violet-100"
+              href="/engineer"
+              className="bg-lime-400 hover:bg-lime-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all shadow-sm"
             >
-              <User size={14} /> <span className="hidden sm:inline">{curr.navPortal}</span>
+              <Wrench size={10} /> ইঞ্জিনিয়ার লগইন
             </Link>
 
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 text-xs font-semibold hover:bg-slate-100 transition"
+              className="bg-white/15 hover:bg-white/25 text-white font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all"
             >
-              <Shield size={14} /> <span className="hidden sm:inline">{curr.navAdmin}</span>
+              <Shield size={10} /> অ্যাডমিন
             </Link>
+
+            <span className="text-white/20">|</span>
+
+            {/* Language Switch */}
+            <div className="flex items-center bg-black/30 rounded-full p-0.5">
+              <button
+                onClick={() => toggleLang("bn")}
+                className={`px-2 py-0.5 rounded-full font-bold transition-all ${lang === "bn" ? "bg-white text-slate-900" : "text-slate-300"}`}
+              >
+                বাং
+              </button>
+              <button
+                onClick={() => toggleLang("en")}
+                className={`px-2 py-0.5 rounded-full font-bold transition-all ${lang === "en" ? "bg-white text-slate-900" : "text-slate-300"}`}
+              >
+                EN
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. MAIN NAVBAR */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+          <Link href="/"><IponionLogo size="md" /></Link>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-700">
+            <a href="#services" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "সার্ভিসসমূহ" : "Services"}</a>
+            <a href="#booking" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "বুকিং" : "Book Service"}</a>
+            <a href="#technologies" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "প্রযুক্তি পার্টনার" : "Technologies"}</a>
+            <a href="#contact" className="hover:text-violet-700 transition-colors">{lang === "bn" ? "যোগাযোগ ও ঠিকানা" : "Contact & Map"}</a>
           </nav>
+
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-violet-900 bg-violet-100 hover:bg-violet-200 rounded-xl transition-all"
+            >
+              <User size={14} /> {lang === "bn" ? "কাস্টমার পোর্টাল" : "Customer Portal"}
+            </Link>
+
+            <a
+              href="#booking"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#2D1457] hover:bg-[#3d1c75] rounded-xl shadow-md transition-all"
+            >
+              {lang === "bn" ? "জরুরি সার্ভিস নিন" : "Get Support Now"}
+            </a>
+          </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative z-10 pt-16 sm:pt-24 pb-14 px-4 sm:px-6 lg:px-8 text-center">
-        <div className="max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 text-[#FF6B57] font-extrabold text-xs uppercase tracking-wide border border-orange-200 shadow-sm mb-6">
-            <Zap size={14} className="fill-[#FF6B57]" /> {curr.badge}
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#2D1457] tracking-tight leading-[1.15]">
-            {curr.heroTitle1} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-[#FF8A65]">
-              IPonion
-            </span> {curr.heroTitle2}
-          </h1>
-
-          <p className="mt-6 text-base sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            {curr.heroDesc}
-          </p>
-
-          <div className="mt-9 flex flex-wrap justify-center items-center gap-3 sm:gap-4">
-            <a href="#booking" className="px-8 py-4 rounded-2xl bg-[#2D1457] text-white font-bold text-sm sm:text-base hover:bg-[#3D1A75] shadow-xl shadow-violet-950/25 transition transform hover:-translate-y-0.5 inline-flex items-center gap-2">
-              {curr.btnBook} <ArrowRight size={16} />
-            </a>
-            <a href="https://wa.me/8801991477412?text=Hello%20IPonion,%20I%20need%20IT%20Support." target="_blank" className="px-7 py-4 rounded-2xl bg-[#25D366] text-white font-bold text-sm sm:text-base hover:bg-[#20bd5a] shadow-lg shadow-emerald-500/20 inline-flex items-center gap-2 transition transform hover:-translate-y-0.5">
-              <MessageCircle size={18} /> {curr.btnWA}
-            </a>
-            <a href="tel:01991477412" className="px-6 py-4 rounded-2xl border-2 border-slate-300 font-bold text-sm sm:text-base hover:bg-white inline-flex items-center gap-2 text-slate-800 transition">
-              <Phone size={18} /> 01991-477412
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Modern Stats Ribbon */}
-      <section className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
-        <div className="bg-white/85 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xl shadow-slate-200/40 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          <div>
-            <div className="text-3xl sm:text-4xl font-black text-[#2D1457]">{curr.stat1Num}</div>
-            <div className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">{curr.stat1Txt}</div>
-          </div>
-          <div>
-            <div className="text-3xl sm:text-4xl font-black text-[#FF6B57]">{curr.stat2Num}</div>
-            <div className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">{curr.stat2Txt}</div>
-          </div>
-          <div>
-            <div className="text-3xl sm:text-4xl font-black text-[#2D1457]">{curr.stat3Num}</div>
-            <div className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">{curr.stat3Txt}</div>
-          </div>
-          <div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-600">{curr.stat4Num}</div>
-            <div className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">{curr.stat4Txt}</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Grid */}
-      <section className="relative z-10 max-w-7xl mx-auto py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <span className="text-xs font-black uppercase tracking-widest text-[#FF6B57] bg-orange-50 px-3 py-1 rounded-full border border-orange-200/60">{curr.servicesTag}</span>
-          <h2 className="text-3xl sm:text-4xl font-black text-[#2D1457] mt-3 tracking-tight">{curr.servicesTitle}</h2>
-          <p className="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">{curr.servicesSubtitle}</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {curr.servicesList.map((s) => (
-            <div key={s.id} className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-7 border border-slate-200/90 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-950/5 transition duration-200 flex flex-col justify-between group">
-              <div>
-                <div className="text-3xl mb-4 w-14 h-14 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center group-hover:scale-110 transition duration-200">{s.icon}</div>
-                <h3 className="font-extrabold text-lg text-slate-900 mb-2 leading-snug">{s.title}</h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{s.desc}</p>
-              </div>
-              <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-semibold text-slate-400 block">{curr.priceFrom}</span>
-                  <span className="text-lg font-black text-[#2D1457]">৳{s.price.toLocaleString()}</span>
-                </div>
-                <a href="#booking" onClick={() => setSelectedService(s.title)} className="px-4 py-2 rounded-xl text-xs font-bold bg-[#FF6B57]/10 text-[#FF6B57] hover:bg-[#FF6B57] hover:text-white transition shadow-sm">
-                  {curr.bookNow}
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Booking Form Section */}
-      <section id="booking" className="relative z-10 max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-7 sm:p-12 border border-slate-200 shadow-2xl shadow-slate-200/60">
-          <div className="text-center max-w-xl mx-auto mb-9">
-            <span className="text-xs font-black uppercase tracking-widest text-[#FF6B57]">{curr.formTag}</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#2D1457] mt-1.5">{curr.formTitle}</h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">{curr.formDesc}</p>
-          </div>
-
-          <form onSubmit={handleBooking} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">{curr.lblName}</label>
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="যেমন: মো: আরিফুল ইসলাম" className="w-full px-4 py-3.5 rounded-2xl border border-slate-300 text-sm outline-none focus:border-[#2D1457] focus:ring-2 focus:ring-[#2D1457]/10 transition" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">{curr.lblPhone}</label>
-                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="017XXXXXXXX" className="w-full px-4 py-3.5 rounded-2xl border border-slate-300 text-sm outline-none focus:border-[#2D1457] focus:ring-2 focus:ring-[#2D1457]/10 transition" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">{curr.lblService}</label>
-                <select required value={selectedService} onChange={(e) => setSelectedService(e.target.value)} className="w-full px-4 py-3.5 rounded-2xl border border-slate-300 text-sm bg-white outline-none focus:border-[#2D1457] focus:ring-2 focus:ring-[#2D1457]/10 transition">
-                  <option value="">-- {curr.lblService} --</option>
-                  {curr.servicesList.map((s) => (
-                    <option key={s.id} value={s.title}>{s.title} ({curr.priceFrom}{s.price})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">{curr.lblArea}</label>
-                <input type="text" required value={area} onChange={(e) => setArea(e.target.value)} placeholder="যেমন: বসিলা, মোহাম্মদপুর, ধানমন্ডি..." className="w-full px-4 py-3.5 rounded-2xl border border-slate-300 text-sm outline-none focus:border-[#2D1457] focus:ring-2 focus:ring-[#2D1457]/10 transition" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">{curr.lblDesc}</label>
-              <textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="কম্পিউটার বা নেটওয়ার্কে কী সমস্যা হচ্ছে সংক্ষেপে লিখুন..." className="w-full px-4 py-3.5 rounded-2xl border border-slate-300 text-sm outline-none focus:border-[#2D1457] focus:ring-2 focus:ring-[#2D1457]/10 transition" />
-            </div>
-
-            <button type="submit" disabled={submitting} className="w-full py-4 rounded-2xl bg-[#2D1457] text-white font-bold text-base hover:bg-[#3D1A75] transition shadow-xl shadow-violet-950/20 disabled:opacity-50">
-              {submitting ? curr.btnSubmitting : curr.btnSubmit}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {/* Customer Reviews Section */}
-      <section className="relative z-10 max-w-7xl mx-auto py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <span className="text-xs font-black uppercase tracking-widest text-[#FF6B57] bg-orange-50 px-3 py-1 rounded-full border border-orange-200/60">{curr.reviewsTag}</span>
-          <h2 className="text-3xl sm:text-4xl font-black text-[#2D1457] mt-3 tracking-tight">{curr.reviewsTitle}</h2>
-          <p className="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">{curr.reviewsSubtitle}</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {curr.reviewsList.map((rev, i) => (
-            <div key={i} className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-md shadow-slate-100 flex flex-col justify-between">
-              <div>
-                <div className="flex gap-1 text-amber-400 mb-4">
-                  {[...Array(rev.rating)].map((_, idx) => (
-                    <Star key={idx} size={16} className="fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic mb-5">"{rev.text}"</p>
-              </div>
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <h4 className="font-extrabold text-sm text-[#2D1457]">{rev.name}</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{rev.role} • 📍 {rev.location}</p>
-                </div>
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">✓</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* HARDWARE & TECHNOLOGIES WE WORK WITH (WORKS WITH - POSITIONED DIRECTLY ABOVE CONTACT) */}
-      <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mb-6">
-        <div className="bg-gradient-to-r from-violet-950 via-[#2D1457] to-[#1C0D36] text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
-          {/* Subtle tech background circle glow */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#FF6B57]/15 rounded-full blur-3xl pointer-events-none"></div>
-
-          <div className="text-center max-w-2xl mx-auto mb-8 relative z-10">
-            <span className="text-[11px] font-black uppercase tracking-widest text-[#FF6B57] bg-white/10 px-3 py-1 rounded-full border border-white/15">
-              {curr.worksWithTag}
+      {/* 3. HERO SECTION */}
+      <section className="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-violet-50/60 via-white to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF6B57]/10 text-[#FF6B57] border border-[#FF6B57]/20 mb-4 animate-bounce">
+              <Zap size={14} /> {lang === "bn" ? "ঢাকায় ৬০ মিনিটে আপনার ঠিকানায় আইটি এক্সপার্ট" : "IT Expert at your doorstep in 60 mins in Dhaka"}
             </span>
-            <h3 className="text-2xl sm:text-3xl font-black mt-3">{curr.worksWithTitle}</h3>
-            <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">{curr.worksWithSubtitle}</p>
-          </div>
 
-          {/* Clean Enterprise Brand Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 relative z-10 select-none">
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">CISCO</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B57]"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">MIKROTIK</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">JUNIPER</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">TP-LINK</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">HP ENTERPRISE</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">UBIQUITI</span>
-            </div>
-            <div className="px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:border-[#FF6B57] hover:bg-white/20 transition flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
-              <span className="font-black text-sm sm:text-base tracking-wider">HIKVISION</span>
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.2] mb-5">
+              {lang === "bn" ? (
+                <>বাসা ও অফিসের আইটি সমস্যা? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-violet-800">আইপিওনিয়ন</span> দিচ্ছে তাৎক্ষণিক সমাধান</>
+              ) : (
+                <>Home & Office IT Headaches? <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D1457] via-[#FF6B57] to-violet-800">IPonion</span> Provides Instant Solutions</>
+              )}
+            </h1>
+
+            <p className="text-base sm:text-lg text-slate-600 mb-8 leading-relaxed">
+              {lang === "bn"
+                ? "রাউটার, ওয়াই-ফাই ডেড-জোন, ল্যান ক্যাবলিং, পিসি/ল্যাপটপ মেরামত, সিসিটিভি এবং মাইক্রোটিক নেটওয়ার্কিং—অভিজ্ঞ ইঞ্জিনিয়ার দিয়ে দ্রুত ও বিশ্বস্ত সার্ভিস।"
+                : "Fast, reliable on-demand IT support across Dhaka for Wi-Fi routers, structured LAN, CCTV cameras, PC repair, and MikroTik firewalls."}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a href="#booking" className="px-6 py-3.5 bg-[#2D1457] hover:bg-[#3d1c75] text-white rounded-xl font-bold text-sm shadow-xl flex items-center gap-2 transition-all">
+                {lang === "bn" ? "অনলাইনে সার্ভিস বুক করুন" : "Book Service Online"} <ArrowRight size={16} />
+              </a>
+              <a href="tel:01991477412" className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all">
+                <Phone size={16} /> 01991477412
+              </a>
+              <a href="https://wa.me/8801991477412" target="_blank" rel="noopener noreferrer" className="px-5 py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition-all">
+                <MessageCircle size={16} /> WhatsApp
+              </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Contact & Real Google Map Hub Section */}
-      <section className="relative z-10 max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 mb-16">
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl shadow-slate-200/50">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Contact Details Card */}
-            <div className="lg:col-span-5 space-y-6">
-              <div>
-                <span className="text-xs font-black uppercase text-[#FF6B57] tracking-widest">{curr.contactTag}</span>
-                <h3 className="text-2xl sm:text-3xl font-black text-[#2D1457] mt-1">{curr.contactTitle}</h3>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">{curr.contactSubtitle}</p>
-              </div>
+      {/* 4. SERVICES GRID */}
+      <section id="services" className="py-16 bg-slate-50 border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+              {lang === "bn" ? "আমাদের নির্ভরযোগ্য সার্ভিসসমূহ" : "Our Professional IT Services"}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-2">
+              {lang === "bn" ? "বাসাবাড়ি ও করপোরেট অফিসের জন্য মানসম্মত আইটি সেবা" : "Quality on-demand services for residential homes & corporate offices"}
+            </p>
+          </div>
 
-              <div className="p-5 rounded-2xl bg-violet-50/70 border border-violet-100 space-y-2">
-                <div className="text-xs font-bold text-[#FF6B57] flex items-center gap-1.5 uppercase tracking-wide">
-                  <MapPin size={15} /> {curr.addressLabel}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.map((s, idx) => (
+              <div key={idx} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-violet-500 hover:shadow-md transition-all flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-violet-100 text-[#2D1457] flex items-center justify-center font-bold mb-4">
+                    {idx + 1}
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-lg mb-2">
+                    {lang === "bn" ? s.title_bn : s.title_en}
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    {lang === "bn" ? s.desc_bn : s.desc_en}
+                  </p>
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed">{curr.addressText}</p>
-              </div>
 
-              <div className="p-5 rounded-2xl bg-orange-50/70 border border-orange-100 space-y-2.5">
-                <div className="text-xs font-bold text-[#FF6B57] flex items-center gap-1.5 uppercase tracking-wide">
-                  <Phone size={15} /> {curr.hotlineLabel}
-                </div>
-                <a href="tel:01991477412" className="block text-2xl font-black text-[#2D1457] hover:underline">01991-477412</a>
-                <div className="pt-2 border-t border-orange-200/60">
-                  <a href="https://wa.me/8801991477412?text=Hello%20IPonion,%20I%20need%20IT%20Support." target="_blank" className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 hover:underline">
-                    <MessageCircle size={15} /> {curr.waLabel} +880 1991-477412
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md">
+                    {lang === "bn" ? s.price_bn : s.price_en}
+                  </span>
+                  <a
+                    href="#booking"
+                    onClick={() => setService(lang === "bn" ? s.title_bn : s.title_en)}
+                    className="text-xs font-bold text-[#FF6B57] hover:underline"
+                  >
+                    {lang === "bn" ? "বুক করুন →" : "Book Now →"}
                   </a>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. BOOKING FORM */}
+      <section id="booking" className="py-16 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="bg-[#2D1457] text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+            <div className="text-center mb-8">
+              <span className="text-xs font-bold uppercase tracking-wider text-lime-400 bg-lime-400/10 px-3 py-1 rounded-full">
+                {lang === "bn" ? "তাৎক্ষণিক বুকিং" : "Instant Booking"}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black mt-3">
+                {lang === "bn" ? "সার্ভিসের জন্য বুকিং নিশ্চিত করুন" : "Book Your IT Service Now"}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                {lang === "bn" ? "ফর্মটি পূরণ করুন, আমাদের সাপোর্ট টিম খুব দ্রুত যোগাযোগ করবে।" : "Submit the form, our expert team will contact you immediately."}
+              </p>
             </div>
 
-            {/* Exact Google Map Embed */}
-            <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-slate-200 shadow-md h-80 sm:h-96">
+            <form onSubmit={handleBooking} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-200 mb-1">
+                  {lang === "bn" ? "সার্ভিস বেছে নিন *" : "Select Service *"}
+                </label>
+                <select
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  className="w-full text-sm font-semibold p-3.5 bg-white text-slate-900 rounded-xl focus:outline-none"
+                  required
+                >
+                  {services.map((s, idx) => (
+                    <option key={idx} value={lang === "bn" ? s.title_bn : s.title_en}>
+                      {lang === "bn" ? s.title_bn : s.title_en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1">
+                    {lang === "bn" ? "আপনার নাম *" : "Your Name *"}
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={lang === "bn" ? "যেমন: তানভীর আহমেদ" : "e.g. Tanvir Ahmed"}
+                    required
+                    className="w-full text-sm p-3.5 bg-white text-slate-900 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1">
+                    {lang === "bn" ? "মোবাইল নম্বর *" : "Phone Number *"}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="01991477412"
+                    required
+                    className="w-full text-sm p-3.5 bg-white text-slate-900 rounded-xl focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-200 mb-1">
+                  {lang === "bn" ? "বাসা/অফিস ও এলাকা *" : "Your Address & Area *"}
+                </label>
+                <input
+                  type="text"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder={lang === "bn" ? "যেমন: বাড়ি ২৭, রোড ০৪, ব্লক ডি, বসিলা গার্ডেন সিটি" : "e.g. House 27, Road 04, Bosila Garden City"}
+                  required
+                  className="w-full text-sm p-3.5 bg-white text-slate-900 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-200 mb-1">
+                  {lang === "bn" ? "সমস্যার সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)" : "Problem Details (Optional)"}
+                </label>
+                <textarea
+                  rows={2}
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+                  placeholder={lang === "bn" ? "যেমন: রাউটারের রেড লাইট জ্বলছে..." : "e.g. Router red light blinking..."}
+                  className="w-full text-sm p-3 bg-white text-slate-900 rounded-xl focus:outline-none resize-none"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 bg-[#FF6B57] hover:bg-[#e85845] text-white font-black text-sm rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <span>{lang === "bn" ? "কনফার্ম হচ্ছে..." : "Confirming..."}</span>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    {lang === "bn" ? "বুকিং কনফার্ম করুন" : "Confirm Service Booking"}
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. TECHNOLOGIES WE WORK WITH */}
+      <section id="technologies" className="py-12 bg-slate-50 border-t border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">
+            {lang === "bn" ? "আমরা যেসব বিশ্বখ্যাত ব্র্যান্ডের সাথে কাজ করি" : "Technologies & Enterprise Brands We Work With"}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-14 opacity-70 grayscale hover:grayscale-0 transition-all font-mono font-black text-slate-800 text-sm sm:text-base">
+            <span className="hover:text-cyan-600 transition-colors">CISCO</span>
+            <span className="hover:text-red-600 transition-colors">MIKROTIK</span>
+            <span className="hover:text-blue-600 transition-colors">JUNIPER</span>
+            <span className="hover:text-teal-600 transition-colors">TP-LINK</span>
+            <span className="hover:text-emerald-600 transition-colors">HP ENTERPRISE</span>
+            <span className="hover:text-blue-500 transition-colors">UBIQUITI</span>
+            <span className="hover:text-rose-600 transition-colors">HIKVISION</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. CONTACT & STANDARD MAP */}
+      <section id="contact" className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            {/* Contact Details */}
+            <div>
+              <span className="text-xs font-bold text-violet-700 bg-violet-100 px-3 py-1 rounded-full">
+                {lang === "bn" ? "আমাদের ঠিকানা" : "Our Office Location"}
+              </span>
+              <h2 className="text-3xl font-black text-slate-900 mt-3 mb-4">
+                {lang === "bn" ? "সরাসরি যোগাযোগ ও অফিস ভিজিট" : "Get in Touch & Visit Us"}
+              </h2>
+
+              <div className="space-y-4 text-sm text-slate-600">
+                <div className="flex items-start gap-3">
+                  <MapPin size={18} className="text-[#FF6B57] flex-shrink-0 mt-1" />
+                  <div>
+                    <strong className="text-slate-900">অফিস ঠিকানা:</strong>
+                    <p>House: 27, Road: 04, Block: D, Bosila Garden City, Mohammadpur, Dhaka.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Phone size={18} className="text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <strong className="text-slate-900">হটলাইন ও WhatsApp:</strong>
+                    <p className="font-mono">01991477412</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Standard Size Responsive Map */}
+            <div className="w-full h-[400px] md:h-[450px] rounded-3xl overflow-hidden shadow-xl border border-slate-200">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m12!1m8!1m3!1d280.84051789958835!2d90.34059921039857!3d23.75385838069246!3m2!1i1024!2i768!4f13.1!2m1!1shouse%2027%20Road%2004%20block%3A-%20D%20Bosila%20garden%20city%20Mohammadpur%20Dhaka!5e1!3m2!1sen!2sbd!4v1794165134399!5m2!1sen!2sbd"
+                src="https://www.google.com/maps/embed?pb=!1m12!1m8!1m3!1d383.8500617922683!2d90.34048948775155!3d23.75387596635493!3m2!1i1024!2i768!4f13.1!2m1!1shouse%2027%20Road%2004%20block%3A-%20D%20Bosila%20garden%20city%20Mohammadpur%20Dhaka!5e0!3m2!1sen!2sbd!4v1794166645987!5m2!1sen!2sbd"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
-                allowFullScreen=""
+                allowFullScreen={true}
                 loading="lazy"
                 referrerPolicy="strict-origin-when-cross-origin"
-              />
+              ></iframe>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Floating WhatsApp Quick Action Button */}
-      <a
-        href="https://wa.me/8801991477412?text=Hello%20IPonion,%20I%20need%20IT%20Support."
-        target="_blank"
-        className="fixed bottom-6 right-6 z-40 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition flex items-center gap-2 font-bold text-sm"
-        title="WhatsApp Chat"
-      >
-        <MessageCircle size={22} />
-        <span className="hidden sm:inline">WhatsApp</span>
-      </a>
+      {/* 8. FOOTER WITH THREE DISTINCT PORTAL LINKS */}
+      <footer className="bg-[#150727] text-white py-12 border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/10">
+            <IponionLogo size="md" />
 
-      {/* Footer */}
-      <footer className="relative z-10 bg-[#1C0D36] text-slate-400 py-12 px-4 sm:px-6 lg:px-8 text-center text-xs border-t border-violet-950">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <IponionLogo size={36} />
-          <p>&copy; 2026 IPonion. {curr.footerRights}</p>
-          <div className="text-slate-300 font-bold">Hotline: 01991-477412</div>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold">
+              <Link href="/auth" className="text-slate-300 hover:text-white transition-colors">
+                👤 কাস্টমার পোর্টাল
+              </Link>
+              <span className="text-slate-600">•</span>
+              <Link href="/engineer" className="text-lime-400 hover:text-lime-300 transition-colors">
+                🛠️ ফিল্ড ইঞ্জিনিয়ার লগইন
+              </Link>
+              <span className="text-slate-600">•</span>
+              <Link href="/admin" className="text-slate-300 hover:text-white transition-colors">
+                🔐 অ্যাডমিন প্যানেল
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-6 text-center text-xs text-slate-400">
+            © {new Date().getFullYear()} IPonion (আইপিওনিয়ন). All rights reserved. Mohammadpur, Dhaka.
+          </div>
         </div>
       </footer>
 
-      {/* POPUP MODAL ON BOOKING SUCCESS */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative animate-in fade-in zoom-in duration-200">
-            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700">
+      {/* BOOKING SUCCESS POPUP MODAL */}
+      {showModal && bookingData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 text-center relative">
+            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
               <X size={20} />
             </button>
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 size={36} />
             </div>
-            <h3 className="text-xl font-black text-[#2D1457] mb-2">{curr.modalTitle}</h3>
-            <p className="text-xs text-slate-600 leading-relaxed mb-6">{curr.modalDesc}</p>
-            {bookingData && (
-              <div className="bg-slate-50 p-4 rounded-2xl text-left text-xs space-y-1.5 mb-6 border border-slate-200">
-                <div><strong>Service:</strong> {bookingData.service}</div>
-                <div><strong>Name:</strong> {bookingData.name} ({bookingData.phone})</div>
-                <div><strong>Location:</strong> {bookingData.area}</div>
-              </div>
-            )}
-            <button
-              onClick={() => setShowModal(false)}
-              className="w-full py-3.5 bg-[#2D1457] text-white font-bold text-sm rounded-2xl hover:bg-[#3D1A75] transition shadow-md shadow-violet-950/20"
-            >
-              {curr.modalBtn}
-            </button>
+
+            <h3 className="text-xl font-black text-slate-900">বুকিং সফল হয়েছে!</h3>
+            <p className="text-xs text-slate-600 mt-1 mb-4">
+              আপনার সার্ভিস রিকোয়েস্টটি আমাদের সেন্টারে গৃহীত হয়েছে। খুব দ্রুত আমাদের টেকনিক্যাল টিম আপনার সাথে যোগাযোগ করবে।
+            </p>
+
+            <div className="bg-slate-50 p-4 rounded-2xl text-left text-xs space-y-1.5 mb-5 border border-slate-100">
+              <p><strong className="text-slate-800">সার্ভিস:</strong> {bookingData.service_title}</p>
+              <p><strong className="text-slate-800">কাস্টমার:</strong> {bookingData.customer_name}</p>
+              <p><strong className="text-slate-800">মোবাইল:</strong> {bookingData.customer_phone}</p>
+              <p><strong className="text-slate-800">ঠিকানা:</strong> {bookingData.customer_address}</p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs"
+              >
+                ঠিক আছে
+              </button>
+              <Link
+                href="/auth"
+                className="flex-1 py-3 bg-[#2D1457] hover:bg-[#3d1c75] text-white rounded-xl font-bold text-xs"
+              >
+                পোর্টালে দেখুন
+              </Link>
+            </div>
           </div>
         </div>
       )}
