@@ -4,7 +4,7 @@ import Link from "next/link";
 import { 
   Shield, Phone, Clock, Calendar, CheckCircle2, AlertCircle, 
   Trash2, Edit, RefreshCw, UserCheck, Wrench, Search, MapPin, Mail, LogOut,
-  Users, BookOpen, MessageSquare
+  Users, BookOpen, X, Check
 } from "lucide-react";
 import IponionLogo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,19 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dbStatus, setDbStatus] = useState<string>("কানেক্ট হচ্ছে...");
+
+  // ENGINEER ASSIGNMENT MODAL STATE
+  const [assignModalBooking, setAssignModalBooking] = useState<any>(null);
+  const [selectedEngId, setSelectedEngId] = useState("tanvir");
+  const [customEngName, setCustomEngName] = useState("");
+  const [customEngPhone, setCustomEngPhone] = useState("");
+
+  const engineerList = [
+    { id: "tanvir", name: "তানভীর আহমেদ (Lead)", phone: "01991477412", role: "নেটওয়ার্ক ও সার্ভার স্পেশালিস্ট" },
+    { id: "rakib", name: "রাকিবুল হাসান", phone: "01791477412", role: "পিসি, ল্যাপটপ ও ওএস রিপেয়ার" },
+    { id: "mehedi", name: "মেহেদী হাসান", phone: "01819477412", role: "সিসিটিভি ক্যামেরা ও ল্যান কেবলিং" }
+  ];
 
   const loadAllData = async () => {
     let supaList: any[] = [];
@@ -30,9 +43,12 @@ export default function AdminPage() {
 
       if (!error && data) {
         supaList = data;
+        setDbStatus(`🟢 ডাটাবেস সক্রিয় (${data.length}টি বুকিং সেন্ট্রাল স্টোরেজে আছে)`);
+      } else if (error) {
+        setDbStatus("⚠️ ডাটাবেস নোটিশ: " + error.message);
       }
-    } catch (e) {
-      console.warn("Supabase load notice:", e);
+    } catch (e: any) {
+      setDbStatus("⚠️ " + (e?.message || "কানেকশন চেক করুন"));
     }
 
     // Merge with localStorage
@@ -50,16 +66,15 @@ export default function AdminPage() {
         seen.add(String(lb.id));
       }
     }
-        // Filter out permanently deleted IDs
+
+    // Filter out permanently deleted IDs
     const delList = JSON.parse(localStorage.getItem("iponion_deleted_ids") || "[]");
     const activeBookings = merged.filter((b) => !delList.includes(String(b.id)));
     setBookings(activeBookings);
 
     // Extract Registered Customers List
     const customerMap = new Map();
-
-    // 1. From merged bookings
-    merged.forEach((b) => {
+    activeBookings.forEach((b) => {
       const key = b.customer_phone || b.customer_email || b.customer_name;
       if (key && !customerMap.has(key)) {
         customerMap.set(key, {
@@ -76,46 +91,6 @@ export default function AdminPage() {
       }
     });
 
-    // 2. From localStorage registered customers
-    try {
-      const reg = localStorage.getItem("iponion_registered_customers");
-      if (reg) {
-        const parsed = JSON.parse(reg);
-        parsed.forEach((c: any) => {
-          const key = c.phone || c.email || c.name;
-          if (key && !customerMap.has(key)) {
-            customerMap.set(key, {
-              name: c.name || "Customer",
-              phone: c.phone || "N/A",
-              email: c.email || "N/A",
-              address: c.address || "ঢাকা",
-              totalBookings: 0,
-              lastBookingDate: c.created_at || new Date().toISOString()
-            });
-          }
-        });
-      }
-    } catch (e) {}
-
-    // 3. From current active session
-    try {
-      const active = localStorage.getItem("iponion_user");
-      if (active) {
-        const a = JSON.parse(active);
-        const key = a.phone || a.email || a.name;
-        if (key && !customerMap.has(key)) {
-          customerMap.set(key, {
-            name: a.name || "Customer",
-            phone: a.phone || "N/A",
-            email: a.email || "N/A",
-            address: a.address || "ঢাকা",
-            totalBookings: 0,
-            lastBookingDate: new Date().toISOString()
-          });
-        }
-      }
-    } catch (e) {}
-
     setCustomers(Array.from(customerMap.values()));
     setLoading(false);
     setRefreshing(false);
@@ -130,7 +105,6 @@ export default function AdminPage() {
       setLoading(false);
     }
 
-    // Auto poll every 3 seconds
     const interval = setInterval(() => {
       if (localStorage.getItem("iponion_admin_pin") === "1991") {
         loadAllData();
@@ -152,10 +126,7 @@ export default function AdminPage() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await supabase
-        .from("bookings")
-        .update({ status: newStatus })
-        .eq("id", id);
+      await supabase.from("bookings").update({ status: newStatus }).eq("id", id);
     } catch (e) {}
 
     setBookings((prev) =>
@@ -163,42 +134,72 @@ export default function AdminPage() {
     );
   };
 
-  const handleAssignEngineer = async (id: string) => {
-    const name = prompt("ইঞ্জিনিয়ারের নাম লিখুন:");
-    if (!name) return;
-    const phone = prompt("ইঞ্জিনিয়ারের ফোন নম্বর লিখুন:");
+  // CONFIRM ENGINEER ASSIGNMENT
+  const handleConfirmAssignment = async () => {
+    if (!assignModalBooking) return;
+    let engName = "";
+    let engPhone = "";
+
+    if (selectedEngId === "custom") {
+      if (!customEngName.trim()) {
+        alert("ইঞ্জিনিয়ারের নাম লিখুন");
+        return;
+      }
+      engName = customEngName.trim();
+      engPhone = customEngPhone.trim();
+    } else {
+      const eng = engineerList.find((x) => x.id === selectedEngId);
+      if (eng) {
+        engName = eng.name;
+        engPhone = eng.phone;
+      }
+    }
 
     try {
       await supabase
         .from("bookings")
         .update({
-          assigned_engineer_name: name,
-          assigned_engineer_phone: phone || "",
+          assigned_engineer_name: engName,
+          assigned_engineer_phone: engPhone,
           status: "Assigned"
         })
-        .eq("id", id);
+        .eq("id", assignModalBooking.id);
+    } catch (e) {}
+
+    // Update localStorage
+    try {
+      const raw = localStorage.getItem("iponion_bookings");
+      if (raw) {
+        const list = JSON.parse(raw);
+        const updated = list.map((b: any) =>
+          String(b.id) === String(assignModalBooking.id)
+            ? { ...b, assigned_engineer_name: engName, assigned_engineer_phone: engPhone, status: "Assigned" }
+            : b
+        );
+        localStorage.setItem("iponion_bookings", JSON.stringify(updated));
+      }
     } catch (e) {}
 
     setBookings((prev) =>
       prev.map((b) =>
-        String(b.id) === String(id)
-          ? { ...b, assigned_engineer_name: name, assigned_engineer_phone: phone, status: "Assigned" }
+        String(b.id) === String(assignModalBooking.id)
+          ? { ...b, assigned_engineer_name: engName, assigned_engineer_phone: engPhone, status: "Assigned" }
           : b
       )
     );
+
+    setAssignModalBooking(null);
+    alert(`✅ ${engName}-কে সফলভাবে অ্যাসাইন করা হয়েছে!`);
   };
 
-    const handleDelete = async (id: string) => {
+  // PERMANENT DELETE (SUPABASE + LOCALSTORAGE + BLACKLIST)
+  const handleDelete = async (id: string) => {
     if (!confirm("আপনি কি নিশ্চিত এই বুকিংটি স্থায়ীভাবে মুছে ফেলতে চান?")) return;
 
-    // 1. Delete from Supabase
     try {
       await supabase.from("bookings").delete().eq("id", id);
-    } catch (e) {
-      console.warn("Supabase delete notice:", e);
-    }
+    } catch (e) {}
 
-    // 2. Remove permanently from localStorage
     try {
       const raw = localStorage.getItem("iponion_bookings");
       if (raw) {
@@ -207,7 +208,6 @@ export default function AdminPage() {
         localStorage.setItem("iponion_bookings", JSON.stringify(filtered));
       }
 
-      // 3. Add to deleted IDs blacklist so auto-polling NEVER brings it back
       const delRaw = localStorage.getItem("iponion_deleted_ids") || "[]";
       const delList = JSON.parse(delRaw);
       if (!delList.includes(String(id))) {
@@ -216,7 +216,6 @@ export default function AdminPage() {
       }
     } catch (e) {}
 
-    // 4. Update UI State immediately
     setBookings((prev) => prev.filter((b) => String(b.id) !== String(id)));
   };
 
@@ -302,6 +301,12 @@ export default function AdminPage() {
 
       {/* DASHBOARD BODY */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+        {/* STATUS BAR */}
+        <div className="mb-4 px-4 py-2 bg-white rounded-2xl border border-slate-200 text-xs font-semibold text-slate-600 flex items-center justify-between">
+          <span>{dbStatus}</span>
+          <span className="text-[11px] font-mono text-slate-400">অটো-সিঙ্ক: প্রতি ৩ সেকেন্ড</span>
+        </div>
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-black text-[#2D1457]">সেন্ট্রাল অ্যাডমিন কন্ট্রোল প্যানেল</h1>
@@ -337,7 +342,7 @@ export default function AdminPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="নাম, ফোন বা সার্ভিস দিয়ে ফিল্টার করুন..."
+              placeholder="নাম, ফোন বা সার্ভিস দিয়ে খুঁজুন..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#5894FF]"
             />
           </div>
@@ -364,6 +369,7 @@ export default function AdminPage() {
             {filteredBookings.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
                 <p className="text-sm font-bold text-slate-600">কোনো বুকিং পাওয়া যায়নি।</p>
+                <p className="text-xs text-slate-400 mt-1">হোমপেইজ থেকে সার্ভিস বুক করা মাত্রই এখানে লাইভ চলে আসবে।</p>
               </div>
             ) : (
               filteredBookings.map((b) => (
@@ -429,9 +435,12 @@ export default function AdminPage() {
                     {b.assigned_engineer_name && (
                       <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
                         <div>
-                          <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
-                          {b.assigned_engineer_phone && <span className="font-mono ml-2">({b.assigned_engineer_phone})</span>}
+                          <strong>দায়িত্বপ্রাপ্ত ইঞ্জিনিয়ার:</strong> {b.assigned_engineer_name}
+                          {b.assigned_engineer_phone && <span className="font-mono ml-2 font-bold">({b.assigned_engineer_phone})</span>}
                         </div>
+                        <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">
+                          অন-ডিউটি
+                        </span>
                       </div>
                     )}
 
@@ -443,11 +452,11 @@ export default function AdminPage() {
 
                   <div className="shrink-0 flex items-center gap-2">
                     <button
-                      onClick={() => handleAssignEngineer(b.id)}
+                      onClick={() => setAssignModalBooking(b)}
                       className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1"
                     >
                       <Wrench size={12} />
-                      <span>ইঞ্জিনিয়ার অ্যাসাইন</span>
+                      <span>{b.assigned_engineer_name ? "ইঞ্জিনিয়ার পরিবর্তন" : "ইঞ্জিনিয়ার অ্যাসাইন"}</span>
                     </button>
 
                     <a
@@ -546,6 +555,98 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* ENGINEER ASSIGNMENT MODAL */}
+      {assignModalBooking && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <h3 className="text-lg font-black text-[#2D1457]">ফিল্ড ইঞ্জিনিয়ার নির্বাচন করুন</h3>
+                <p className="text-xs text-slate-500">
+                  বুকিং: <strong className="text-slate-800">{assignModalBooking.service_title}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setAssignModalBooking(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              <span className="text-xs font-bold text-slate-700 block">উপলব্ধ সার্টিফাইড ইঞ্জিনিয়ার তালিকা:</span>
+
+              {engineerList.map((eng) => (
+                <label
+                  key={eng.id}
+                  onClick={() => setSelectedEngId(eng.id)}
+                  className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${selectedEngId === eng.id ? "border-violet-600 bg-violet-50/60 shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedEngId === eng.id ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300"}`}>
+                      {selectedEngId === eng.id && <Check size={12} strokeWidth={3} />}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{eng.name}</h4>
+                      <p className="text-[11px] text-slate-500">{eng.role} • <strong className="font-mono text-slate-700">{eng.phone}</strong></p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                    Active
+                  </span>
+                </label>
+              ))}
+
+              {/* Custom Engineer Option */}
+              <label
+                onClick={() => setSelectedEngId("custom")}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${selectedEngId === "custom" ? "border-violet-600 bg-violet-50/60" : "border-slate-200 hover:bg-slate-50"}`}
+              >
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedEngId === "custom" ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300"}`}>
+                  {selectedEngId === "custom" && <Check size={12} strokeWidth={3} />}
+                </div>
+                <span className="text-xs font-bold text-slate-800">অন্যান্য ইঞ্জিনিয়ার (নতুন নাম ও ফোন নম্বর দিন)</span>
+              </label>
+
+              {selectedEngId === "custom" && (
+                <div className="grid grid-cols-2 gap-2.5 pt-2">
+                  <input
+                    type="text"
+                    value={customEngName}
+                    onChange={(e) => setCustomEngName(e.target.value)}
+                    placeholder="ইঞ্জিনিয়ারের নাম *"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                  <input
+                    type="tel"
+                    value={customEngPhone}
+                    onChange={(e) => setCustomEngPhone(e.target.value)}
+                    placeholder="ফোন নম্বর *"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleConfirmAssignment}
+                className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-xs shadow-md transition-all"
+              >
+                কনফার্ম ইঞ্জিনিয়ার অ্যাসাইন করুন
+              </button>
+              <button
+                onClick={() => setAssignModalBooking(null)}
+                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+              >
+                বাতিল
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
