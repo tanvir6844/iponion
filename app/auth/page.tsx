@@ -1,351 +1,434 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import IponionLogo from "@/components/Logo";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, MessageCircle, Phone, CheckCircle2, AlertCircle, ArrowRight, ArrowLeft, RefreshCw, KeyRound, Sparkles } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { 
+  Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle, 
+  KeyRound, Send, Phone
+} from "lucide-react";
+import IponionLogo from "@/components/Logo";
+import { 
+  auth, 
+  googleProvider, 
+  signInWithPopup, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  sendEmailVerification, 
+  sendPasswordResetEmail,
+  onAuthStateChanged
+} from "@/lib/firebase";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"register" | "login">("register");
-  const [step, setStep] = useState<"form" | "verify">("form");
-
+  const router = useRouter();
+  const [tab, setTab] = useState<"login" | "register" | "forgot">("login");
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-
-  const [otpInput, setOtpInput] = useState("");
-  const [generatedOtp, setGeneratedOtp] = useState("");
-  const [timer, setTimer] = useState(60);
-
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
-    let interval: any;
-    if (step === "verify" && timer > 0) {
-      interval = setInterval(() => setTimer((p) => p - 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [step, timer]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && user.emailVerified) {
+        localStorage.setItem("iponion_user", JSON.stringify({
+          name: user.displayName || name || "Customer",
+          email: user.email,
+          phone: phone || user.phoneNumber || "",
+          photoURL: user.photoURL || "",
+          role: "customer"
+        }));
+        router.replace("/portal");
+      }
+    });
+    return () => unsubscribe();
+  }, [router, name, phone]);
 
-  // SEND VERIFICATION CODE
-  const handleSendCode = async (e: React.FormEvent) => {
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      const userData = {
+        name: user.displayName || "Google User",
+        email: user.email,
+        phone: user.phoneNumber || "",
+        photoURL: user.photoURL || "",
+        role: "customer"
+      };
+      localStorage.setItem("iponion_user", JSON.stringify(userData));
+      router.replace("/portal");
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("গুগল সাইন-ইন উইন্ডো বন্ধ করা হয়েছে। আবার চেষ্টা করুন।");
+      } else {
+        setError("গুগল লগইনে সমস্যা: " + err.message);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
+    setError("");
     setSuccessMsg("");
 
-    if (!name.trim() || !phone.trim() || !email.trim()) {
-      setErrorMsg("দয়া করে নাম, মোবাইল নম্বর এবং ইমেইল পূরণ করুন।");
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("সবগুলো ফিল্ড পূরণ করুন।");
+      return;
+    }
+    if (password.length < 6) {
+      setError("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।");
       return;
     }
 
     setLoading(true);
-    // Generate secure 4-digit code
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(code);
-
     try {
-      // Background email alert dispatch
-      fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), phone: phone.trim(), name: name.trim(), code: code })
-      }).catch(() => {});
-    } catch (e) {}
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await sendEmailVerification(userCredential.user);
 
-    setStep("verify");
-    setTimer(60);
-    setLoading(false);
-    setSuccessMsg(`✅ ${email} ঠিকানায় কোড পাঠানো হয়েছে! নিচে দেওয়া ওটিপি কোডটি প্রবেশ করিয়ে ভেরিফাই সম্পন্ন করুন।`);
+      localStorage.setItem("iponion_user", JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        role: "customer"
+      }));
+
+      setSuccessMsg("🎉 রেজিস্ট্রেশন সফল হয়েছে! আপনার ইমেইল (" + email + ")-এ একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে। দয়া করে মেইল চেক করে লিংকে ক্লিক করুন।");
+      setTab("login");
+    } catch (err: any) {
+      if (err.code === "auth/email-already-in-use") {
+        setError("এই ইমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট খোলা আছে। লগইন করুন।");
+      } else if (err.code === "auth/invalid-email") {
+        setError("সঠিক ইমেইল অ্যাড্রেস লিখুন।");
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // VERIFY & CENTRALLY SAVE USER IN SUPABASE
-  const handleVerifySubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
+    setError("");
+    setSuccessMsg("");
 
-    if (!otpInput.trim()) {
-      setErrorMsg("৪ ডিজিটের কোডটি লিখুন।");
-      return;
-    }
+    setLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
 
-    if (otpInput.trim() === generatedOtp || otpInput.trim() === "1234" || otpInput.trim() === "1991") {
-      setLoading(true);
-
-      const customerProfile = {
-        name: name.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
-        address: address.trim() || "Dhaka",
-        is_verified: true,
-        created_at: new Date().toISOString()
-      };
-
-      // 1. SAVE CENTRALLY IN SUPABASE BOOKINGS (Auto UUID generation - GUARANTEED!)
-      try {
-        await supabase.from("bookings").insert([{
-          service_title: "Customer Registration",
-          customer_name: customerProfile.name,
-          customer_phone: customerProfile.phone,
-          customer_email: customerProfile.email,
-          customer_address: customerProfile.address,
-          area: customerProfile.address,
-          status: "Completed",
-          problem_desc: "New Customer Account Created"
-        }]);
-      } catch (e) {
-        console.error("Central registration error:", e);
+      if (!user.emailVerified) {
+        setError("⚠️ আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! অনুগ্রহ করে আপনার ইনবক্স চেক করে লিংকে ক্লিক করুন।");
+        setLoading(false);
+        return;
       }
 
-      // 2. ALSO TRY CUSTOMERS TABLE
-      try {
-        await supabase.from("customers").insert([{
-          name: customerProfile.name,
-          phone: customerProfile.phone,
-          email: customerProfile.email,
-          address: customerProfile.address
-        }]);
-      } catch (e) {}
-
-      // 3. Save Active Session
-      localStorage.setItem("iponion_user", JSON.stringify(customerProfile));
-
-      // Append to registered list
-      try {
-        const u = localStorage.getItem("iponion_registered_customers");
-        const list = u ? JSON.parse(u) : [];
-        if (!list.some((x: any) => x.phone === customerProfile.phone)) {
-          list.push(customerProfile);
-          localStorage.setItem("iponion_registered_customers", JSON.stringify(list));
-        }
-      } catch (e) {}
-
-      setSuccessMsg("🎉 ভেরিফিকেশন সফল হয়েছে! কাস্টমার পোর্টালে নিয়ে যাওয়া হচ্ছে...");
-      setTimeout(() => {
-        window.location.href = "/portal";
-      }, 800);
-    } else {
-      setErrorMsg("ভুল ওটিপি কোড! অনুগ্রহ করে সঠিক কোড দিন (বা স্ক্রিনের টেস্ট কোড দিন)।");
+      const userData = {
+        name: user.displayName || name || "Customer",
+        email: user.email,
+        phone: phone || user.phoneNumber || "",
+        role: "customer"
+      };
+      localStorage.setItem("iponion_user", JSON.stringify(userData));
+      router.replace("/portal");
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        setError("ভুল ইমেইল অথবা পাসওয়ার্ড দিয়েছেন।");
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // DIRECT PHONE LOGIN
-  const handleDirectLogin = (e: React.FormEvent) => {
+  const handleResendVerification = async () => {
+    if (auth.currentUser) {
+      try {
+        await sendEmailVerification(auth.currentUser);
+        setSuccessMsg("পুনরায় ভেরিফিকেশন মেইল পাঠানো হয়েছে।");
+      } catch (err: any) {
+        setError("লিংক পাঠাতে সমস্যা: " + err.message);
+      }
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim()) return;
-
-    let savedList: any[] = [];
+    if (!email.trim()) {
+      setError("আপনার রেজিস্টার্ড ইমেইলটি লিখুন।");
+      return;
+    }
+    setLoading(true);
     try {
-      const u = localStorage.getItem("iponion_registered_customers");
-      if (u) savedList = JSON.parse(u);
-    } catch (e) {}
-
-    const found = savedList.find((x: any) => x.phone === phone.trim());
-    const finalUser = found || {
-      name: "সম্মানিত গ্রাহক",
-      phone: phone.trim(),
-      email: `${phone.trim()}@customer.iponion.com`,
-      address: "Dhaka"
-    };
-
-    localStorage.setItem("iponion_user", JSON.stringify(finalUser));
-    setSuccessMsg("লগইন সফল হয়েছে!");
-    setTimeout(() => {
-      window.location.href = "/portal";
-    }, 500);
+      await sendPasswordResetEmail(auth, email.trim());
+      setSuccessMsg("পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে।");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
-        <Link href="/" className="inline-block"><IponionLogo size="lg" /></Link>
-        <h2 className="mt-3 text-2xl font-black text-slate-900">আইপিওনিয়ন কাস্টমার ভেরিফিকেশন</h2>
-        <p className="text-xs text-slate-500 mt-1">ইমেইল ও WhatsApp ভেরিফাইড সার্ভিস ট্র্যাকিং</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#1a0b33] via-[#2D1457] to-slate-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20">
+        <div className="text-center mb-6">
+          <Link href="/" className="inline-block mb-3">
+            <IponionLogo size="md" />
+          </Link>
+          <h2 className="text-2xl font-black text-[#2D1457]">
+            {tab === "login" && "কাস্টমার পোর্টাল লগইন"}
+            {tab === "register" && "নতুন কাস্টমার রেজিস্ট্রেশন"}
+            {tab === "forgot" && "পাসওয়ার্ড রিসেট"}
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            গুগল ও ফায়ারবেস সিকিউর অথেনটিকেশন
+          </p>
+        </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-200">
-          {step === "form" && (
-            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
-              <button
-                onClick={() => { setMode("register"); setErrorMsg(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                  mode === "register" ? "bg-[#2D1457] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                নতুন অ্যাকাউন্ট (Sign Up)
-              </button>
-              <button
-                onClick={() => { setMode("login"); setErrorMsg(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                  mode === "login" ? "bg-[#2D1457] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                লগইন (Sign In)
-              </button>
+        {/* GOOGLE SIGN IN BUTTON */}
+        {tab !== "forgot" && (
+          <div className="mb-5">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading}
+              className="w-full py-3 px-4 border border-slate-300 rounded-xl flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm shadow-sm transition-all"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>{googleLoading ? "কানেক্ট হচ্ছে..." : "Google দিয়ে ১-ক্লিকে সাইন ইন"}</span>
+            </button>
+
+            <div className="flex items-center my-4">
+              <div className="flex-1 border-t border-slate-200"></div>
+              <span className="px-3 text-xs text-slate-400 font-semibold">অথবা ইমেইল ব্যবহার করুন</span>
+              <div className="flex-1 border-t border-slate-200"></div>
             </div>
-          )}
+          </div>
+        )}
 
-          {errorMsg && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-xl mb-4 font-semibold flex items-center gap-2">
-              <AlertCircle size={16} className="flex-shrink-0" />
-              <span>{errorMsg}</span>
+        {/* ALERTS */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-semibold flex items-start gap-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <div className="flex-1">
+              {error}
+              {error.includes("ভেরিফাই") && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  className="block mt-1 text-[#5894FF] underline font-bold"
+                >
+                  পুনরায় ভেরিফিকেশন মেইল পাঠান
+                </button>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {successMsg && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-xl mb-4 font-semibold flex items-center gap-2">
-              <CheckCircle2 size={16} className="flex-shrink-0 text-emerald-600" />
-              <span>{successMsg}</span>
+        {successMsg && (
+          <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold flex items-start gap-2">
+            <CheckCircle2 size={16} className="shrink-0 text-emerald-600 mt-0.5" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
+        {/* TABS */}
+        <div className="flex border-b border-slate-200 mb-5">
+          <button
+            onClick={() => { setTab("login"); setError(""); setSuccessMsg(""); }}
+            className={`flex-1 pb-2.5 text-xs font-bold text-center border-b-2 transition-all ${tab === "login" ? "border-[#5894FF] text-[#5894FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+          >
+            লগইন (Sign In)
+          </button>
+          <button
+            onClick={() => { setTab("register"); setError(""); setSuccessMsg(""); }}
+            className={`flex-1 pb-2.5 text-xs font-bold text-center border-b-2 transition-all ${tab === "register" ? "border-[#5894FF] text-[#5894FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+          >
+            নতুন রেজিস্ট্রেশন
+          </button>
+        </div>
+
+        {/* LOGIN FORM */}
+        {tab === "login" && (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">ইমেইল অ্যাড্রেস *</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="yourname@gmail.com"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
+                />
+              </div>
             </div>
-          )}
 
-          {/* SIGN UP FORM */}
-          {step === "form" && mode === "register" && (
-            <form onSubmit={handleSendCode} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">আপনার নাম *</label>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700">পাসওয়ার্ড *</label>
+                <button
+                  type="button"
+                  onClick={() => setTab("forgot")}
+                  className="text-[11px] text-[#5894FF] hover:underline"
+                >
+                  পাসওয়ার্ড ভুলে গেছেন?
+                </button>
+              </div>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-[#5894FF] hover:bg-[#437ee8] text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>{loading ? "ভেরিফাই হচ্ছে..." : "লগইন করুন"}</span>
+              <ArrowRight size={16} />
+            </button>
+          </form>
+        )}
+
+        {/* REGISTER FORM */}
+        {tab === "register" && (
+          <form onSubmit={handleRegister} className="space-y-3.5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">আপনার নাম *</label>
+              <div className="relative">
+                <User size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   type="text"
+                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="যেমন: তানভীর আহমেদ"
-                  required
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-600 focus:outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">মোবাইল নম্বর (১১ ডিজিট) *</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  required
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-600 focus:outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">ইমেইল অ্যাড্রেস *</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">ইমেইল অ্যাড্রেস *</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   type="email"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@gmail.com"
-                  required
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-600 focus:outline-none"
+                  placeholder="yourname@gmail.com"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">ঠিকানা / এলাকা (ঐচ্ছিক)</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="যেমন: বসিলা, মোহাম্মদপুর"
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-600 focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-[#2D1457] to-[#421d80] hover:opacity-95 text-white font-bold rounded-xl text-xs shadow-lg transition-all flex items-center justify-center gap-2 mt-3"
-              >
-                {loading ? "কোড জেনারেট হচ্ছে..." : "ভেরিফিকেশন কোড পান"}
-                <ArrowRight size={15} />
-              </button>
-            </form>
-          )}
-
-          {/* LOGIN FORM */}
-          {step === "form" && mode === "login" && (
-            <form onSubmit={handleDirectLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">আপনার রেজিস্টার্ড মোবাইল নম্বর *</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">ফোন নম্বর (যোগাযোগের জন্য)</label>
+              <div className="relative">
+                <Phone size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  required
-                  className="w-full text-xs p-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-violet-600 focus:outline-none font-mono text-base"
+                  placeholder="017XXXXXXXX"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm font-mono"
                 />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-[#2D1457] hover:bg-[#3d1c75] text-white font-bold rounded-xl text-xs shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                সরাসরি ড্যাশবোর্ডে প্রবেশ করুন <ArrowRight size={15} />
-              </button>
-            </form>
-          )}
-
-          {/* VERIFY STEP WITH INSTANT LIVE CODE */}
-          {step === "verify" && (
-            <form onSubmit={handleVerifySubmit} className="space-y-4 text-center">
-              <div className="w-12 h-12 bg-violet-100 text-[#2D1457] rounded-2xl flex items-center justify-center mx-auto mb-2">
-                <KeyRound size={24} />
-              </div>
-
-              <h3 className="text-lg font-black text-slate-900">ভেরিফিকেশন কোড লিখুন</h3>
-              <p className="text-xs text-slate-500">
-                <strong>{email}</strong> ঠিকানায় ওটিপি পাঠানো হয়েছে।
-              </p>
-
-              {/* LIVE OTP DISPLAY BOX */}
-              {generatedOtp && (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 p-3 rounded-2xl text-center shadow-sm">
-                  <span className="text-[11px] font-bold text-amber-800 flex items-center justify-center gap-1">
-                    <Sparkles size={13} className="text-amber-600" /> আপনার ওটিপি ভেরিফিকেশন কোড:
-                  </span>
-                  <p className="text-2xl font-black tracking-widest text-[#2D1457] font-mono mt-0.5">
-                    {generatedOtp}
-                  </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">কোডটি নিচে লিখে ভেরিফাই সম্পন্ন করুন</p>
-                </div>
-              )}
-
-              <div className="py-1">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">পাসওয়ার্ড * (কমপক্ষে ৬ অক্ষর)</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
-                  type="text"
-                  maxLength={6}
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                  placeholder="• • • •"
-                  autoFocus
-                  className="w-48 mx-auto text-center font-mono text-2xl tracking-[0.5em] py-3 border-2 border-violet-600 rounded-2xl bg-violet-50/50 focus:outline-none font-black text-violet-950 shadow-inner"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
                 />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 text-white font-bold rounded-xl text-xs shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                {loading ? "যাচাই হচ্ছে..." : "কোড নিশ্চিত করুন ও অ্যাকাউন্ট অ্যাক্টিভ করুন"}
-                <CheckCircle2 size={16} />
-              </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
+            >
+              <Send size={16} />
+              <span>{loading ? "অ্যাকাউন্ট তৈরি হচ্ছে..." : "রেজিস্ট্রেশন করুন ও মেইল ভেরিফাই করুন"}</span>
+            </button>
+          </form>
+        )}
 
-              <div className="flex items-center justify-between pt-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setStep("form")}
-                  className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
-                >
-                  <ArrowLeft size={13} /> ব্যাকে যান
-                </button>
-                <span className="text-slate-400 font-mono">০:{timer < 10 ? `0${timer}` : timer} সেকেন্ড</span>
+        {/* FORGOT FORM */}
+        {tab === "forgot" && (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">আপনার রেজিস্টার্ড ইমেইল</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="yourname@gmail.com"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5894FF] text-sm"
+                />
               </div>
-            </form>
-          )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-[#5894FF] hover:bg-[#437ee8] text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>{loading ? "পাঠানো হচ্ছে..." : "পাসওয়ার্ড রিসেট লিংক পাঠান"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTab("login")}
+              className="w-full text-center text-xs text-slate-500 hover:text-slate-800"
+            >
+              লগইন পেইজে ফিরে যান
+            </button>
+          </form>
+        )}
+
+        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <Link href="/" className="text-xs text-[#5894FF] hover:underline font-semibold">
+            ← হোমপেইজে ফিরে যান
+          </Link>
         </div>
       </div>
     </div>
