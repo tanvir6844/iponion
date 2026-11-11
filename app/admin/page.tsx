@@ -42,7 +42,20 @@ export default function AdminPage() {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        supaList = data;
+        supaList = data.map((b: any) => {
+          const emailMatch = b.problem_desc ? b.problem_desc.match(/ইমেইল:\s*([^\s\]|]+)/) : null;
+          return {
+            ...b,
+            customer_name: b.customer_name || "সম্মানিত কাস্টমার",
+            customer_phone: b.customer_phone || b.phone || "N/A",
+            phone: b.phone || b.customer_phone || "N/A",
+            customer_email: b.customer_email || (emailMatch ? emailMatch[1] : ""),
+            customer_address: b.customer_address || b.area || "ঢাকা",
+            area: b.area || b.customer_address || "ঢাকা",
+            booking_date: b.booking_date || "তাৎক্ষণিক",
+            booking_time: b.booking_time || "যেকোনো সময়"
+          };
+        });
         setDbStatus(`🟢 ডাটাবেস সক্রিয় (${data.length}টি বুকিং সেন্ট্রাল স্টোরেজে আছে)`);
       } else if (error) {
         setDbStatus("⚠️ ডাটাবেস নোটিশ: " + error.message);
@@ -51,18 +64,49 @@ export default function AdminPage() {
       setDbStatus("⚠️ " + (e?.message || "কানেকশন চেক করুন"));
     }
 
-    // Merge with localStorage
+    // Merge with localStorage & auto-sync local bookings to Supabase
     let localList: any[] = [];
     try {
       const raw = localStorage.getItem("iponion_bookings");
-      if (raw) localList = JSON.parse(raw);
+      if (raw) {
+        localList = JSON.parse(raw);
+        if (Array.isArray(localList)) {
+          for (const lb of localList) {
+            if (typeof lb.id === "string" && lb.id.startsWith("bk_")) {
+              try {
+                const syncPayload = {
+                  customer_name: lb.customer_name || "Customer",
+                  phone: lb.customer_phone || lb.phone || "01991477412",
+                  area: lb.customer_address || lb.area || "Dhaka",
+                  service_title: lb.service_title || "IT Support",
+                  problem_desc: lb.problem_desc || "",
+                  status: lb.status === "Cancelled" ? "Pending" : (lb.status || "Pending"),
+                  booking_date: lb.booking_date || new Date().toISOString().split("T")[0],
+                  booking_time: lb.booking_time || "যেকোনো সময়",
+                  support_mode: "Doorstep Home/Office Visit",
+                  preferred_time: lb.booking_time || "24/7 As soon as possible"
+                };
+                const { data: inserted } = await supabase.from("bookings").insert([syncPayload]).select();
+                if (inserted && inserted[0]) {
+                  lb.id = inserted[0].id;
+                  localStorage.setItem("iponion_bookings", JSON.stringify(localList));
+                }
+              } catch (err) {}
+            }
+          }
+        }
+      }
     } catch (e) {}
 
     const merged = [...supaList];
     const seen = new Set(supaList.map((b) => String(b.id)));
     for (const lb of localList) {
       if (!seen.has(String(lb.id))) {
-        merged.push(lb);
+        merged.push({
+          ...lb,
+          customer_phone: lb.customer_phone || lb.phone || "N/A",
+          customer_address: lb.customer_address || lb.area || "ঢাকা"
+        });
         seen.add(String(lb.id));
       }
     }
@@ -75,12 +119,14 @@ export default function AdminPage() {
     // Extract Registered Customers List
     const customerMap = new Map();
     activeBookings.forEach((b) => {
-      const key = b.customer_phone || b.customer_email || b.customer_name;
+      const p = b.customer_phone || b.phone;
+      const em = b.customer_email || (b.problem_desc?.match(/ইমেইল:\s*([^\s\]|]+)/)?.[1]) || "";
+      const key = p || em || b.customer_name;
       if (key && !customerMap.has(key)) {
         customerMap.set(key, {
           name: b.customer_name || "সম্মানিত কাস্টমার",
-          phone: b.customer_phone || "N/A",
-          email: b.customer_email || "N/A",
+          phone: p || "N/A",
+          email: em || "N/A",
           address: b.customer_address || b.area || "ঢাকা",
           totalBookings: 1,
           lastBookingDate: b.created_at || new Date().toISOString()
@@ -156,14 +202,23 @@ export default function AdminPage() {
     }
 
     try {
-      await supabase
+      const res = await supabase
         .from("bookings")
         .update({
           assigned_engineer_name: engName,
           assigned_engineer_phone: engPhone,
-          status: "Assigned"
+          status: "In Progress"
         })
         .eq("id", assignModalBooking.id);
+
+      if (res.error) {
+        await supabase
+          .from("bookings")
+          .update({
+            status: "In Progress"
+          })
+          .eq("id", assignModalBooking.id);
+      }
     } catch (e) {}
 
     // Update localStorage

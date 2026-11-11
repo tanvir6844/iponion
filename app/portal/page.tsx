@@ -37,35 +37,64 @@ export default function CustomerPortalPage() {
 
     let supaList: any[] = [];
     try {
-      const orList: string[] = [];
-      if (last10) orList.push(`customer_phone.ilike.%${last10}%`);
-      if (userEmail) orList.push(`customer_email.eq.${userEmail}`);
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      if (orList.length > 0) {
-        const { data, error } = await supabase
-          .from("bookings")
-          .select("*")
-          .or(orList.join(","))
-          .order("created_at", { ascending: false });
-
-        if (!error && data) supaList = data;
+      if (!error && data) {
+        // Map native Supabase columns to UI format
+        supaList = data.map((b: any) => {
+          const emailMatch = b.problem_desc ? b.problem_desc.match(/ইমেইল:\s*([^\s\]|]+)/) : null;
+          return {
+            ...b,
+            customer_name: b.customer_name || "সম্মানিত কাস্টমার",
+            customer_phone: b.customer_phone || b.phone || "",
+            customer_email: b.customer_email || (emailMatch ? emailMatch[1] : ""),
+            customer_address: b.customer_address || b.area || "ঢাকা",
+            booking_date: b.booking_date || "তাৎক্ষণিক",
+            booking_time: b.booking_time || "যেকোনো সময়"
+          };
+        });
       }
     } catch (e) {
       console.warn("Supabase query error:", e);
     }
 
-    // LocalStorage fallback
+    // LocalStorage fallback & auto-sync to Supabase
     let localList: any[] = [];
     try {
       const raw = localStorage.getItem("iponion_bookings");
       if (raw) {
         const allLocal = JSON.parse(raw);
         if (Array.isArray(allLocal)) {
-          localList = allLocal.filter((b: any) => {
-            const bPhone = normalizePhone(b.customer_phone || b.phone || "");
-            const bEmail = (b.customer_email || "").toLowerCase();
-            return (last10 && bPhone.endsWith(last10)) || (userEmail && bEmail === userEmail);
-          });
+          localList = allLocal;
+
+          // Auto-sync any local-only bookings (ID starting with bk_) to Supabase
+          for (const lb of allLocal) {
+            if (typeof lb.id === "string" && lb.id.startsWith("bk_")) {
+              try {
+                const syncPayload = {
+                  customer_name: lb.customer_name || "Customer",
+                  phone: lb.customer_phone || lb.phone || "01991477412",
+                  area: lb.customer_address || lb.area || "Dhaka",
+                  service_title: lb.service_title || "IT Support",
+                  problem_desc: lb.problem_desc || "",
+                  status: lb.status === "Cancelled" ? "Pending" : (lb.status || "Pending"),
+                  booking_date: lb.booking_date || new Date().toISOString().split("T")[0],
+                  booking_time: lb.booking_time || "যেকোনো সময়",
+                  support_mode: "Doorstep Home/Office Visit",
+                  preferred_time: lb.booking_time || "24/7 As soon as possible"
+                };
+                const { data: inserted } = await supabase.from("bookings").insert([syncPayload]).select();
+                if (inserted && inserted[0]) {
+                  lb.id = inserted[0].id;
+                  localStorage.setItem("iponion_bookings", JSON.stringify(allLocal));
+                  supaList.unshift(inserted[0]);
+                }
+              } catch (err) {}
+            }
+          }
         }
       }
     } catch (e) {}
@@ -80,7 +109,17 @@ export default function CustomerPortalPage() {
       }
     }
 
-    setBookings(merged);
+    // Filter only this customer's bookings
+    const userBookings = merged.filter((b: any) => {
+      const bPhone = normalizePhone(b.customer_phone || b.phone || "");
+      const bEmail = (b.customer_email || "").toLowerCase();
+      const desc = (b.problem_desc || "").toLowerCase();
+      const phoneMatches = last10 && bPhone.endsWith(last10);
+      const emailMatches = userEmail && (bEmail === userEmail || desc.includes(userEmail));
+      return phoneMatches || emailMatches;
+    });
+
+    setBookings(userBookings.length > 0 ? userBookings : merged);
     setLoading(false);
     setRefreshing(false);
   };

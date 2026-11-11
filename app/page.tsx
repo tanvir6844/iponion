@@ -86,35 +86,39 @@ export default function Home() {
     const scheduleInfo = `[তারিখ: ${bookingDate} | সময়: ${bookingTime}${customerEmail ? ` | ইমেইল: ${customerEmail}` : ""}]`;
     const fullProblem = problem.trim() ? `${scheduleInfo} ${problem.trim()}` : scheduleInfo;
 
-    const basePayload = {
-      service_title: service,
+    // Database payload using exact Supabase columns
+    const supaPayload: any = {
       customer_name: name.trim(),
-      customer_phone: cleanPhone,
-      customer_email: customerEmail || null,
-      customer_address: area.trim(),
+      phone: cleanPhone,
       area: area.trim(),
+      service_title: service,
       problem_desc: fullProblem,
-      status: "Pending"
+      status: "Pending",
+      booking_date: bookingDate,
+      booking_time: bookingTime,
+      preferred_time: bookingTime,
+      support_mode: "Doorstep Home/Office Visit"
     };
 
     let savedBooking: any = null;
 
     // 3. Multi-tier insert into Supabase
     try {
-      // First try with booking_date & booking_time
-      const res1 = await supabase.from("bookings").insert([{
-        ...basePayload,
-        booking_date: bookingDate,
-        booking_time: bookingTime
+      // First try with rich extended columns
+      const richRes = await supabase.from("bookings").insert([{
+        ...supaPayload,
+        customer_phone: cleanPhone,
+        customer_email: customerEmail || null,
+        customer_address: area.trim()
       }]).select();
 
-      if (!res1.error && res1.data && res1.data.length > 0) {
-        savedBooking = res1.data[0];
+      if (!richRes.error && richRes.data && richRes.data.length > 0) {
+        savedBooking = richRes.data[0];
       } else {
-        // Fallback to core columns that always exist
-        const res2 = await supabase.from("bookings").insert([basePayload]).select();
-        if (res2.data && res2.data.length > 0) {
-          savedBooking = res2.data[0];
+        // Fallback to core guaranteed schema columns
+        const coreRes = await supabase.from("bookings").insert([supaPayload]).select();
+        if (!coreRes.error && coreRes.data && coreRes.data.length > 0) {
+          savedBooking = coreRes.data[0];
         }
       }
     } catch (err) {
@@ -124,10 +128,19 @@ export default function Home() {
     if (!savedBooking) {
       savedBooking = {
         id: "bk_" + Date.now(),
-        ...basePayload,
-        booking_date: bookingDate,
-        booking_time: bookingTime,
+        ...supaPayload,
+        customer_phone: cleanPhone,
+        customer_email: customerEmail || null,
+        customer_address: area.trim(),
         created_at: new Date().toISOString()
+      };
+    } else {
+      // Ensure local object has rich aliases for display
+      savedBooking = {
+        ...savedBooking,
+        customer_phone: savedBooking.customer_phone || savedBooking.phone || cleanPhone,
+        customer_email: savedBooking.customer_email || customerEmail || null,
+        customer_address: savedBooking.customer_address || savedBooking.area || area.trim()
       };
     }
 
